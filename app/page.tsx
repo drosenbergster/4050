@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, Leaf, Users, DollarSign, Building2, Home as HomeIcon } from 'lucide-react';
+import { Heart, Leaf, Users } from 'lucide-react';
+import ProductPreview from '@/app/components/product-preview';
 
 export default function Home() {
   return (
@@ -129,65 +130,39 @@ export default function Home() {
 
       {/* Products Preview */}
       <section className="bg-[#FDF8F3] py-16 md:py-24">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#5C4A3D] mb-4">
-            Our Products
-          </h2>
-          <p className="text-lg text-[#636E72] max-w-2xl mx-auto mb-12">
-            Each jar is handcrafted with care using traditional methods and the finest homegrown ingredients.
-          </p>
-          <Link
-            href="/shop"
-            className="inline-block bg-[#4A7C59] text-white px-8 py-3 rounded-lg font-medium hover:bg-[#3D6649] transition-all hover:-translate-y-0.5"
-          >
-            View All Products
-          </Link>
-        </div>
-      </section>
-
-      {/* Community Impact Section */}
-      <section id="impact" className="bg-white py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#5C4A3D] mb-4">
-              Our Community Impact
+              Our Products
             </h2>
             <p className="text-lg text-[#636E72] max-w-2xl mx-auto">
-              Every purchase makes a difference. Here&apos;s how we&apos;ve helped our community together.
+              Each jar is handcrafted with care using traditional methods and the finest homegrown ingredients.
             </p>
           </div>
+          <ProductPreview />
+        </div>
+      </section>
 
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
-            <div className="bg-[#FDF8F3] rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 bg-[#E8F0EA] rounded-full flex items-center justify-center mx-auto mb-4">
-                <DollarSign className="text-[#4A7C59]" size={28} />
-              </div>
-              <div className="text-4xl font-bold text-[#4A7C59] mb-2">$45,000+</div>
-              <p className="text-[#636E72]">Raised for Community</p>
+      {/* Community Impact Teaser */}
+      <section id="impact" className="bg-white py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-[#4A7C59] rounded-2xl p-8 md:p-12 text-center text-white">
+              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">
+                Our Community Impact
+              </h2>
+              <div className="text-6xl md:text-7xl font-bold mb-4">100%</div>
+              <p className="text-lg md:text-xl opacity-90 mb-8 max-w-2xl mx-auto">
+                Every penny of profit goes directly to supporting local families, food banks, 
+                community gardens, and youth programs.
+              </p>
+              <Link
+                href="/impact"
+                className="inline-block bg-white text-[#4A7C59] px-8 py-3 rounded-lg font-medium hover:bg-[#F5EDE4] transition-all hover:-translate-y-0.5"
+              >
+                See Our Impact
+              </Link>
             </div>
-            <div className="bg-[#FDF8F3] rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 bg-[#E8F0EA] rounded-full flex items-center justify-center mx-auto mb-4">
-                <Building2 className="text-[#4A7C59]" size={28} />
-              </div>
-              <div className="text-4xl font-bold text-[#4A7C59] mb-2">12</div>
-              <p className="text-[#636E72]">Non-Profits Supported</p>
-            </div>
-            <div className="bg-[#FDF8F3] rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 bg-[#E8F0EA] rounded-full flex items-center justify-center mx-auto mb-4">
-                <HomeIcon className="text-[#4A7C59]" size={28} />
-              </div>
-              <div className="text-4xl font-bold text-[#4A7C59] mb-2">500+</div>
-              <p className="text-[#636E72]">Families Helped</p>
-            </div>
-          </div>
-
-          <div className="bg-[#4A7C59] rounded-2xl p-8 md:p-12 text-center text-white max-w-3xl mx-auto">
-            <h3 className="text-2xl font-serif font-bold mb-4">Where Your Money Goes</h3>
-            <div className="text-6xl font-bold mb-4">100%</div>
-            <p className="text-lg opacity-90 max-w-xl mx-auto">
-              Every penny of profit goes directly to supporting local food banks, community gardens, 
-              youth programs, and families in need. We keep our costs low and our impact high.
-            </p>
           </div>
         </div>
       </section>
