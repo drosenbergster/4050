@@ -24,7 +24,7 @@ async function getProducts(): Promise<(Product & { category: string })[]> {
     });
     
     // Map DB products to include category based on name
-    return dbProducts.map(p => {
+    return dbProducts.map((p: Product) => {
       const matchedProduct = PRODUCTS_DATA.find(pd => pd.name.toLowerCase().includes(p.name.toLowerCase().split(' ')[0]));
       return {
         ...p,
