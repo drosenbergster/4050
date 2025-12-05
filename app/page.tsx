@@ -15,7 +15,7 @@ export default function Home() {
                 From Our Kitchen to Your Table
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-[#5C4A3D] mt-4 mb-6 leading-tight">
-                Handpicked. Homemade. Heartfelt.
+                4050 - Homegrown and Heartfelt
               </h1>
               <p className="text-lg text-[#636E72] mb-8 max-w-xl">
                 Pure, simple ingredients grown in our backyard and preserved with generations of care. 
