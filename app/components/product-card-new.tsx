@@ -34,7 +34,8 @@ export default function ProductCardNew({ product }: ProductCardNewProps) {
             alt={product.name}
             fill
             className="object-cover hover:scale-105 transition-transform duration-500"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            unoptimized
           />
         ) : (
           <div className="flex items-center justify-center h-full text-[#8B7355]">

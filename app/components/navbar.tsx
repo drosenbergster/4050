@@ -2,12 +2,17 @@
 
 import Link from 'next/link';
 import { ShoppingCart, Menu, X, Leaf } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCart } from '@/app/context/cart-context';
 
 export default function Navbar() {
   const { toggleCart, itemCount } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <nav className="bg-[#FDF8F3] border-b border-[#E5DDD3] sticky top-0 z-40">
@@ -42,7 +47,7 @@ export default function Navbar() {
             >
               <ShoppingCart size={18} />
               <span>Cart</span>
-              {itemCount > 0 && (
+              {mounted && itemCount > 0 && (
                 <span className="bg-white text-[#4A7C59] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {itemCount}
                 </span>
@@ -57,7 +62,7 @@ export default function Navbar() {
               className="relative p-2 text-[#5C4A3D] hover:text-[#4A7C59] transition-colors"
             >
               <ShoppingCart size={24} />
-              {itemCount > 0 && (
+              {mounted && itemCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-[#4A7C59] text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {itemCount}
                 </span>

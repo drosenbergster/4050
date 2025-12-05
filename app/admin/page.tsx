@@ -3,13 +3,20 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Product, Order } from '@/lib/types';
 import { formatPrice } from '@/lib/format';
 import { Package, ShoppingBag, LogOut, Plus } from 'lucide-react';
 
+interface MockOrder {
+  id: string;
+  customerName: string;
+  total: number;
+  fulfillmentStatus: 'PENDING' | 'FULFILLED';
+  createdAt: string;
+  fulfillmentMethod: 'SHIPPING' | 'PICKUP';
+}
+
 // Mock Data
-const MOCK_ORDERS: any[] = [
+const MOCK_ORDERS: MockOrder[] = [
   { id: 'ord_1', customerName: 'Jane Doe', total: 2999, fulfillmentStatus: 'PENDING', createdAt: new Date().toISOString(), fulfillmentMethod: 'SHIPPING' },
   { id: 'ord_2', customerName: 'John Smith', total: 1500, fulfillmentStatus: 'FULFILLED', createdAt: new Date(Date.now() - 86400000).toISOString(), fulfillmentMethod: 'PICKUP' },
 ];

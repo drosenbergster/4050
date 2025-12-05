@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -29,7 +28,7 @@ export default function AdminLogin() {
       } else {
         router.push('/admin');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);

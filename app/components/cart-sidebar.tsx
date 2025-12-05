@@ -3,7 +3,7 @@
 import { X, Minus, Plus, Trash2 } from 'lucide-react';
 import { useCart } from '@/app/context/cart-context';
 import Image from 'next/image';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -19,6 +19,11 @@ export default function CartSidebar() {
     subtotal,
     itemCount
   } = useCart();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Prevent body scroll when cart is open
   useEffect(() => {
@@ -52,7 +57,7 @@ export default function CartSidebar() {
           {/* Header */}
           <div className="px-6 py-5 border-b border-[#E5DDD3] flex items-center justify-between bg-[#FDF8F3]">
             <h2 className="text-xl font-serif font-bold text-[#5C4A3D]">
-              Your Cart ({itemCount})
+              Your Cart{mounted && itemCount > 0 ? ` (${itemCount})` : ''}
             </h2>
             <button
               onClick={toggleCart}
@@ -64,7 +69,11 @@ export default function CartSidebar() {
 
           {/* Items */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
-            {items.length === 0 ? (
+            {!mounted ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="animate-pulse text-[#636E72]">Loading...</div>
+              </div>
+            ) : items.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-12">
                 <div className="w-20 h-20 bg-[#F5EDE4] rounded-full flex items-center justify-center text-[#8B7355]">
                   <X size={36} />
@@ -87,6 +96,8 @@ export default function CartSidebar() {
                         alt={item.product.name}
                         fill
                         className="object-cover"
+                        sizes="80px"
+                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#8B7355] text-xs">
@@ -134,7 +145,7 @@ export default function CartSidebar() {
           </div>
 
           {/* Footer */}
-          {items.length > 0 && (
+          {mounted && items.length > 0 && (
             <div className="border-t border-[#E5DDD3] p-6 bg-[#FDF8F3]">
               <div className="flex justify-between items-center mb-4">
                 <span className="text-[#636E72] font-medium">Subtotal</span>

@@ -1,4 +1,5 @@
 import { Heart, Leaf, Users, MapPin, Clock } from 'lucide-react';
+import Image from 'next/image';
 
 export default function AboutPage() {
   return (
@@ -11,17 +12,20 @@ export default function AboutPage() {
               Our Story
             </h1>
             <p className="text-xl text-[#636E72] max-w-2xl mx-auto">
-              4050 began in a small kitchen with Ilene's passion for preserving traditions 
+              4050 began in a small kitchen with Ilene&apos;s passion for preserving traditions 
               and giving back to the community.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-12 items-center mb-20">
             <div className="relative aspect-video bg-[#F5EDE4] rounded-2xl overflow-hidden">
-              <img 
+              <Image 
                 src="https://placehold.co/600x400/F5EDE4/8B7355?text=Apple+Orchard" 
                 alt="Large gently sloping backyard with heritage apple trees"
+                width={600}
+                height={400}
                 className="w-full h-full object-cover"
+                unoptimized
               />
             </div>
             <div className="space-y-6">
@@ -31,8 +35,8 @@ export default function AboutPage() {
               </p>
               <p className="text-lg text-[#636E72] leading-relaxed">
                 Every jar represents hours of love, traditional methods passed down through generations, 
-                and a commitment to supporting those in need. When you choose 4050, you're not just buying 
-                preserves – you're investing in local families and causes.
+                and a commitment to supporting those in need. When you choose 4050, you&apos;re not just buying 
+                preserves – you&apos;re investing in local families and causes.
               </p>
             </div>
           </div>

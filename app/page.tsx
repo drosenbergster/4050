@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Heart, Leaf, Users, DollarSign, Building2, Home as HomeIcon } from 'lucide-react';
 
 export default function Home() {
@@ -37,10 +38,13 @@ export default function Home() {
             <div className="flex-1 relative">
               <div className="relative w-full aspect-square max-w-lg mx-auto">
                 <div className="w-full h-full bg-[#F5EDE4] rounded-2xl flex items-center justify-center overflow-hidden">
-                  <img 
+                  <Image 
                     src="https://placehold.co/500x500/F5EDE4/8B7355?text=Homemade+Jars" 
                     alt="Homemade applesauce jars"
+                    width={500}
+                    height={500}
                     className="w-full h-full object-cover rounded-2xl"
+                    unoptimized
                   />
                 </div>
                 {/* Badge */}
@@ -62,16 +66,19 @@ export default function Home() {
               Our Story
             </h2>
             <p className="text-lg text-[#636E72] max-w-2xl mx-auto">
-              4050 began in a small kitchen with Ilene's passion for preserving traditions and giving back to the community.
+              4050 began in a small kitchen with Ilene&apos;s passion for preserving traditions and giving back to the community.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
             <div className="relative aspect-video bg-[#F5EDE4] rounded-2xl overflow-hidden">
-              <img 
+              <Image 
                 src="https://placehold.co/600x400/F5EDE4/8B7355?text=Apple+Orchard" 
                 alt="Large gently sloping backyard with heritage apple trees"
+                width={600}
+                height={400}
                 className="w-full h-full object-cover"
+                unoptimized
               />
             </div>
             <div className="space-y-6">
@@ -81,8 +88,8 @@ export default function Home() {
               </p>
               <p className="text-[#636E72] leading-relaxed">
                 Every jar represents hours of love, traditional methods passed down through generations, 
-                and a commitment to supporting those in need. When you choose 4050, you're not just buying 
-                preserves – you're investing in local families and causes.
+                and a commitment to supporting those in need. When you choose 4050, you&apos;re not just buying 
+                preserves – you&apos;re investing in local families and causes.
               </p>
             </div>
           </div>
@@ -146,7 +153,7 @@ export default function Home() {
               Our Community Impact
             </h2>
             <p className="text-lg text-[#636E72] max-w-2xl mx-auto">
-              Every purchase makes a difference. Here's how we've helped our community together.
+              Every purchase makes a difference. Here&apos;s how we&apos;ve helped our community together.
             </p>
           </div>
 
@@ -177,7 +184,7 @@ export default function Home() {
           <div className="bg-[#4A7C59] rounded-2xl p-8 md:p-12 text-center text-white max-w-3xl mx-auto">
             <h3 className="text-2xl font-serif font-bold mb-4">Where Your Money Goes</h3>
             <div className="text-6xl font-bold mb-4">100%</div>
-            <p className="text-lg opacity-90">
+            <p className="text-lg opacity-90 max-w-xl mx-auto">
               Every penny of profit goes directly to supporting local food banks, community gardens, 
               youth programs, and families in need. We keep our costs low and our impact high.
             </p>
@@ -196,7 +203,7 @@ export default function Home() {
               Upcoming Products
             </h2>
             <p className="text-lg text-[#636E72] max-w-2xl mx-auto">
-              Ilene is always experimenting in the kitchen. Here's what we're working on next.
+              Ilene is always experimenting in the kitchen. Here&apos;s what we&apos;re working on next.
             </p>
           </div>
 
