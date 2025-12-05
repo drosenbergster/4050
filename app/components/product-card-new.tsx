@@ -71,7 +71,7 @@ export default function ProductCardNew({ product }: ProductCardNewProps) {
         {/* Price and Add to Cart */}
         <div className="flex items-center justify-between pt-4 border-t border-[#E5DDD3]">
           <span className="text-xl font-bold text-[#5C4A3D]">
-            {formatPrice(product.priceCents)}
+            {formatPrice(product.price)}
           </span>
           
           <button
