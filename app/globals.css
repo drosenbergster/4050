@@ -1,8 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #2C3E50;
+  /* Warm, earthy color palette from Figma */
+  --color-cream: #FDF8F3;
+  --color-cream-dark: #F5EDE4;
+  --color-green: #4A7C59;
+  --color-green-dark: #3D6649;
+  --color-green-light: #E8F0EA;
+  --color-brown: #8B7355;
+  --color-brown-dark: #5C4A3D;
+  --color-text: #2D3436;
+  --color-text-light: #636E72;
+  --color-white: #FFFFFF;
+  --color-border: #E5DDD3;
+  
+  --background: var(--color-cream);
+  --foreground: var(--color-text);
 }
 
 @theme inline {
@@ -16,9 +29,48 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif), serif;
+  font-family: var(--font-serif), Georgia, serif;
+  color: var(--color-brown-dark);
+}
+
+/* Custom utility classes */
+.btn-primary {
+  background-color: var(--color-green);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-green-dark);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--color-green);
+  border: 2px solid var(--color-green);
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-green);
+  color: white;
+}
+
+.section-padding {
+  padding: 5rem 0;
+}
+
+.card-shadow {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }

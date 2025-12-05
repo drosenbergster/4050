@@ -4,6 +4,8 @@ import "./globals.css";
 import { CartProvider } from "@/app/context/cart-context";
 import Navbar from "@/app/components/navbar";
 import CartSidebar from "@/app/components/cart-sidebar";
+import Link from "next/link";
+import { Leaf, Mail, MapPin } from "lucide-react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,8 +24,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "4050 - Homemade Goods",
-  description: "Handcrafted, homegrown produce and goods from our family to yours.",
+  title: "4050 - Ilene's Homegrown Goodness",
+  description: "Homemade applesauce, jams, and preserves. 100% of profits support community causes.",
 };
 
 export default function RootLayout({
@@ -34,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased font-sans text-[#2C3E50] bg-white`}
+        className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased`}
       >
         <CartProvider>
           <div className="flex flex-col min-h-screen">
@@ -43,10 +45,64 @@ export default function RootLayout({
             <main className="flex-grow">
               {children}
             </main>
-            <footer className="bg-[#2C3E50] text-white py-8 mt-auto">
-              <div className="container mx-auto px-4 text-center">
-                <p className="font-serif text-lg mb-2">4050</p>
-                <p className="text-sm text-gray-300">© {new Date().getFullYear()} 4050. All rights reserved.</p>
+            
+            {/* Footer */}
+            <footer className="bg-[#5C4A3D] text-white py-12">
+              <div className="container mx-auto px-4">
+                <div className="grid md:grid-cols-3 gap-8 mb-8">
+                  {/* Brand */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 bg-[#4A7C59] rounded-full flex items-center justify-center">
+                        <Leaf size={18} className="text-white" />
+                      </div>
+                      <span className="text-xl font-serif font-bold">4050</span>
+                    </div>
+                    <p className="text-[#D4C5B9] text-sm">
+                      Homemade goodness supporting community causes, one jar at a time.
+                    </p>
+                  </div>
+
+                  {/* Quick Links */}
+                  <div>
+                    <h4 className="font-bold mb-4">Quick Links</h4>
+                    <div className="flex flex-col space-y-2">
+                      <Link href="/" className="text-[#D4C5B9] hover:text-white transition-colors text-sm">
+                        Home
+                      </Link>
+                      <Link href="/about" className="text-[#D4C5B9] hover:text-white transition-colors text-sm">
+                        About Us
+                      </Link>
+                      <Link href="/shop" className="text-[#D4C5B9] hover:text-white transition-colors text-sm">
+                        Products
+                      </Link>
+                      <Link href="/#impact" className="text-[#D4C5B9] hover:text-white transition-colors text-sm">
+                        Our Impact
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Contact */}
+                  <div>
+                    <h4 className="font-bold mb-4">Contact</h4>
+                    <div className="flex flex-col space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-[#D4C5B9]">
+                        <Mail size={16} />
+                        <span>hello@4050goods.com</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-[#D4C5B9]">
+                        <MapPin size={16} />
+                        <span>Local Community Kitchen</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-[#7A6B5D] pt-6 text-center">
+                  <p className="text-[#D4C5B9] text-sm">
+                    © {new Date().getFullYear()} 4050. Made with love for the community.
+                  </p>
+                </div>
               </div>
             </footer>
           </div>
