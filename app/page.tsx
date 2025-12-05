@@ -10,14 +10,14 @@ export default function Home() {
           <div className="flex flex-col md:flex-row items-center gap-12">
             <div className="flex-1 text-center md:text-left">
               <span className="text-[#4A7C59] font-medium text-sm uppercase tracking-wider">
-                Homemade with Love
+                From Our Kitchen to Your Table
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-[#5C4A3D] mt-4 mb-6 leading-tight">
-                Ilene's Homegrown Goodness
+                Handpicked. Homemade. Heartfelt.
               </h1>
               <p className="text-lg text-[#636E72] mb-8 max-w-xl">
-                Every jar of our applesauce and jam is lovingly crafted from homegrown produce. 
-                Each purchase supports local community initiatives and non-profit causes.
+                Pure, simple ingredients grown in our backyard and preserved with generations of care. 
+                Every jar you buy feeds a family, supports a cause, and connects our community—one delicious spoonful at a time.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
                 <Link
