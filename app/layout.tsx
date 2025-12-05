@@ -24,8 +24,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "4050 - Ilene's Homegrown Goodness",
-  description: "Homemade applesauce, jams, and preserves. 100% of profits support community causes.",
+  title: "4050 - Homegrown and Heartfelt",
+  description: "Pure, simple ingredients grown in our backyard and preserved with generations of care. 100% of profits support community causes.",
 };
 
 export default function RootLayout({
