@@ -8,7 +8,13 @@ if (!connectionString) {
   throw new Error('DATABASE_URL environment variable is not set');
 }
 
-const pool = new Pool({ connectionString });
+// Create Pool with explicit SSL configuration for Supabase
+const pool = new Pool({ 
+  connectionString,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 const adapter = new PrismaPg(pool);
 
 // Singleton pattern for Prisma client (avoid multiple instances in dev)
