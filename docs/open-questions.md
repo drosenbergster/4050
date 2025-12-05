@@ -42,13 +42,28 @@ Use this document to capture answers to key questions that will guide developmen
 **Examples:** 8oz apple butter, 16oz applesauce, 12oz strawberry jam, etc.
 
 **Answer (list each product with size):**
-1. 
-2. 
-3. 
-4. 
-5. 
+1. Applesauce
+2. Sugar-Free Applesauce
+3. Apple Rings
+4. Apple Butter
+5. Apple Chips
+6. Raspberry Jam
+7. Blueberry Jam
+8. Apple Jam
+9. Pickled Green Beans
+10. Pickles
+
+**Upcoming Products (for future):**
+- Pear Butter
+- Strawberry Jam
+- Apple Pie Filling
+- Spiced Apple Cider Jam
+- Pickled Beets
+- Dried Pear Chips
 
 **Notes:**
+- All products seeded in database with placeholder images
+- Pricing TBD - will be set via admin panel
 
 
 ---
@@ -58,13 +73,20 @@ Use this document to capture answers to key questions that will guide developmen
 **Question:** What will each product cost?
 
 **Answer (match to products above):**
-1. 
-2. 
-3. 
-4. 
-5. 
+1. TBD - To be set via admin panel
+2. TBD - To be set via admin panel
+3. TBD - To be set via admin panel
+4. TBD - To be set via admin panel
+5. TBD - To be set via admin panel
+6. TBD - To be set via admin panel
+7. TBD - To be set via admin panel
+8. TBD - To be set via admin panel
+9. TBD - To be set via admin panel
+10. TBD - To be set via admin panel
 
 **Pricing Strategy Notes:**
+- Pricing will be input later via admin panel
+- Products currently seeded with $0.00 price (placeholder)
 
 
 ---
@@ -114,15 +136,17 @@ Use this document to capture answers to key questions that will guide developmen
 **Question:** Where exactly can local customers pick up orders? What's the radius you'll serve?
 
 **Pickup Address/Location:**
-
+4050 HQ (exact address TBD)
 
 **Pickup Days/Hours:**
-
+TBD - To be determined
 
 **Service Radius (miles):**
-
+TBD
 
 **Notes:**
+- Pickup location will be shown on About page and during checkout
+- Hours will be added when determined
 
 
 ---
@@ -134,15 +158,17 @@ Use this document to capture answers to key questions that will guide developmen
 **Status:**
 - [ ] Have existing photos
 - [ ] Need new photos
-- [ ] Need to schedule photo shoot
+- [x] Using placeholder photos for now
 
 **Photo Needs:**
-- Individual product shots
-- Lifestyle/styled shots
-- Packaging shots
-- Behind-the-scenes/process shots
+- Individual product shots (using placeholders)
+- Lifestyle/styled shots (future)
+- Packaging shots (future)
+- Behind-the-scenes/process shots (future)
 
 **Notes:**
+- Using placeholder images during development
+- Will replace with actual product photos when available
 
 
 ---
@@ -152,16 +178,19 @@ Use this document to capture answers to key questions that will guide developmen
 **Question:** Will you ship nationwide or limit to certain regions initially?
 
 **Answer:**
-- [ ] Nationwide
+- [x] Nationwide (for now)
 - [ ] Regional only (specify):
 - [ ] Limit certain states (specify):
 
 **Shipping Considerations:**
-- Extreme heat/cold concerns?
-- Maximum transit time comfortable with?
-- International shipping (future)?
+- Flat rate shipping: $10.00 (updated for location later)
+- Extreme heat/cold concerns? TBD
+- Maximum transit time comfortable with? TBD
+- International shipping (future)? Not in MVP
 
 **Notes:**
+- Currently using flat $10 shipping fee
+- Location-based adjustments can be added later
 
 
 ---
@@ -277,4 +306,6 @@ Once you've answered the critical questions (🔴), we can:
 3. Start design and development planning
 
 **Target Date to Complete Critical Questions:** _______________
+
+
 

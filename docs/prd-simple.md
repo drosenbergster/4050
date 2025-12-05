@@ -1,8 +1,8 @@
-# 4050 Product Requirements Document (PRD)
+# 4050 Simple Product Requirements Document (PRD)
 
 **Version:** 2.0 (Simplified)  
 **Date:** November 28, 2025  
-**Status:** Ready for Development  
+**Status:** Draft - Simplified Focus  
 **Project:** 4050 Simple Produce Marketplace
 
 ---
@@ -12,7 +12,7 @@
 ### Goals
 
 - Enable customers to browse and purchase homegrown produce products through a simple, intuitive interface
-- Support both local pickup and shipping (flat rate) fulfillment options
+- Support local pickup as the primary fulfillment method (shipping optional with flat rate)
 - Provide secure payment processing with Stripe integration
 - Enable admin to easily add/edit products and view orders
 - Launch quickly with minimal complexity
@@ -34,7 +34,7 @@
 
 ### Functional Requirements
 
-**FR1:** Display a simple product catalog with photos, names, descriptions, and prices. Clicking a product image shows more details (modal or detail page).
+**FR1:** Display a simple product catalog with photos, names, descriptions, and prices.
 
 **FR2:** Allow customers to add products to a shopping cart.
 
@@ -46,15 +46,15 @@
 - If shipping: address (street, city, state, zip)
 - Payment via Stripe
 
-**FR5:** For shipping, use a flat rate of $10.00. Local pickup has $0 shipping cost. Location-based adjustments can be added later.
+**FR5:** For shipping, use a simple flat rate (e.g., $8.00) - no real-time calculations. Local pickup has $0 shipping cost.
 
 **FR6:** After payment, show a thank you page with order summary.
 
-**FR7:** Admin can add/edit/delete products (name, description, price, photo upload, available/not available).
+**FR7:** Admin can add/edit/delete products (name, description, price, photo, available/not available).
 
-**FR8:** Admin can view orders (showing customer name, email, items, fulfillment method) and mark them as fulfilled.
+**FR8:** Admin can view orders and mark them as fulfilled.
 
-**FR9:** Include a simple About page with brand story and local pickup location/hours. Pickup details also shown during checkout when pickup is selected.
+**FR9:** Include a simple About page with brand story.
 
 ### Non-Functional Requirements
 
@@ -112,22 +112,22 @@
 ## What We're Removing (vs. Original PRD)
 
 ❌ **Removed:**
-- Real-time shipping cost calculator (using simple tiered pricing based on order size instead)
+- Real-time shipping cost calculator (using flat rate instead)
 - Email confirmations (just thank you page)
 - Complex inventory tracking (just available/not available toggle)
 - Admin dashboard with metrics
 - Contact/FAQ page
 - Privacy Policy and Terms pages (can add later if needed)
-- Ingredients field on products (not needed)
-- Order detail pages (just list view with essential info)
+- Product detail pages (all info on catalog page)
+- Order detail pages (just list view)
 - Complex error handling and retry flows
 
 ✅ **Keeping:**
-- Product catalog with clickable images for details
+- Product catalog
 - Shopping cart
 - Checkout with Stripe
-- Basic admin (products with photo upload, orders list)
-- Simple About page with pickup details
+- Basic admin (products and orders)
+- Simple About page
 
 ---
 
@@ -136,7 +136,7 @@
 ### Database Schema (Simplified)
 
 **Product:**
-- id, name, description, price, imageUrl (uploaded via admin), isAvailable (boolean)
+- id, name, description, price, imageUrl, isAvailable (boolean)
 
 **Order:**
 - id, customerName, customerEmail, customerPhone, shippingAddress (JSON, nullable), fulfillmentMethod, shippingCost (flat rate), subtotal, total, paymentStatus, fulfillmentStatus, stripePaymentIntentId, createdAt
@@ -154,21 +154,21 @@
 - `POST /api/checkout` - Create order and payment intent
 
 **Admin:**
-- `POST /api/admin/products` - Create product (with image upload)
-- `PUT /api/admin/products/[id]` - Update product (with image upload)
+- `POST /api/admin/products` - Create product
+- `PUT /api/admin/products/[id]` - Update product
 - `DELETE /api/admin/products/[id]` - Delete product
-- `GET /api/admin/orders` - List orders (customer name, email, items, fulfillment method)
+- `GET /api/admin/orders` - List orders
 - `PATCH /api/admin/orders/[id]` - Mark fulfilled
 
 ### Pages (Simplified)
 
 **Public:**
 - `/` - Homepage
-- `/shop` - Product catalog (click image for details)
+- `/shop` - Product catalog
 - `/cart` - Shopping cart
-- `/checkout` - Checkout form (shows pickup details when selected)
+- `/checkout` - Checkout form
 - `/thank-you` - Order confirmation
-- `/about` - About page (includes pickup location/hours)
+- `/about` - About page
 
 **Admin:**
 - `/admin/login` - Admin login
@@ -199,10 +199,12 @@ The simplified MVP is successful when:
 
 ## Next Steps
 
-1. Update architecture document to match simplified scope
-2. Begin development with simplified focus
-3. Remove unnecessary complexity from codebase
+1. Review this simplified PRD
+2. Confirm what to keep/remove
+3. Update architecture document to match simplified scope
+4. Begin development with simplified focus
 
 ---
 
 *This simplified PRD focuses on getting a working product to market quickly. We can add complexity later if needed.*
+

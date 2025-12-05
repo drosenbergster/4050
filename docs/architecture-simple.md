@@ -208,16 +208,20 @@ interface User {
 
 ## Shipping Calculation
 
-Simple flat rate shipping:
+Simple tiered pricing based on order size:
 
 ```typescript
-function calculateShipping(fulfillmentMethod: string): number {
+function calculateShipping(subtotal: number, fulfillmentMethod: string): number {
   if (fulfillmentMethod === "PICKUP") {
     return 0;
   }
   
-  // Flat rate shipping
-  return 1000; // $10.00 in cents
+  // Tiered pricing based on order size
+  if (subtotal < 5000) { // Under $50
+    return 800; // $8.00
+  } else {
+    return 1200; // $12.00
+  }
 }
 ```
 

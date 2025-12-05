@@ -1,0 +1,96 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Admin user model for authentication
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
+// Product model for store items
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String   @db.Text
+  price       Int      // Price in cents (e.g., 999 = $9.99)
+  imageUrl    String
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([isAvailable])
+  @@map("products")
+}
+
+enum FulfillmentMethod {
+  SHIPPING
+  PICKUP
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum FulfillmentStatus {
+  PENDING
+  FULFILLED
+}
+
+// Order model for customer purchases
+model Order {
+  id                    String            @id @default(uuid())
+  customerName          String
+  customerEmail         String
+  customerPhone         String
+  shippingAddress       Json?             // { street, city, state, zipCode }
+  fulfillmentMethod     FulfillmentMethod
+  shippingCost          Int?              // In cents (flat $10.00 = 1000)
+  subtotal              Int               // In cents
+  total                 Int               // In cents
+  paymentStatus         PaymentStatus     @default(PENDING)
+  fulfillmentStatus     FulfillmentStatus @default(PENDING)
+  stripePaymentIntentId String?           @unique
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  items OrderItem[]
+
+  @@index([fulfillmentStatus])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+// OrderItem model for products in an order
+model OrderItem {
+  id          String @id @default(uuid())
+  orderId     String
+  productId   String
+  productName String // Snapshot at time of order
+  quantity    Int
+  unitPrice   Int    // Price per unit in cents (snapshot)
+  lineTotal   Int    // quantity * unitPrice
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@map("order_items")
+}
