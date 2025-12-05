@@ -1,16 +1,16 @@
 # Vercel Environment Variables - Google OAuth Setup
-# Copy this content or import directly in Vercel Dashboard
+# Import these into Vercel Dashboard: Settings > Environment Variables > Import
 
-# Database Connection
-DATABASE_URL="postgresql://postgres.fwagehvkevmjbyujommf:mHt_t%263%23ed%26diY9@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+# Database Connection (Supabase)
+DATABASE_URL=postgresql://postgres.fwagehvkevmjbyujommf:YOUR_DB_PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
 
 # NextAuth Configuration
-NEXTAUTH_SECRET="YW8XvAS6J7rzp/BZhWUhkWTu0s2ULQQsQ9rqcB17lyU="
-NEXTAUTH_URL="https://YOUR-PROJECT.vercel.app"
+NEXTAUTH_SECRET=YOUR_RANDOM_SECRET_HERE
+NEXTAUTH_URL=https://4050.vercel.app
 
-# Google OAuth Credentials (Get these from: https://console.cloud.google.com/apis/credentials)
-GOOGLE_CLIENT_ID="YOUR-CLIENT-ID.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="YOUR-CLIENT-SECRET"
+# Google OAuth Credentials
+GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
 
-# Admin Access Control (Your email address - only this email can access admin)
-ADMIN_ALLOWED_EMAILS="your-email@gmail.com"
+# Admin Access Control (comma-separated emails)
+ADMIN_ALLOWED_EMAILS=drosenbergster@gmail.com
