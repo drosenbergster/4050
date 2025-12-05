@@ -1,0 +1,16 @@
+# Vercel Environment Variables - Google OAuth Setup
+# Copy this content or import directly in Vercel Dashboard
+
+# Database Connection
+DATABASE_URL="postgresql://postgres.fwagehvkevmjbyujommf:mHt_t%263%23ed%26diY9@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+# NextAuth Configuration
+NEXTAUTH_SECRET="YW8XvAS6J7rzp/BZhWUhkWTu0s2ULQQsQ9rqcB17lyU="
+NEXTAUTH_URL="https://YOUR-PROJECT.vercel.app"
+
+# Google OAuth Credentials (Get these from: https://console.cloud.google.com/apis/credentials)
+GOOGLE_CLIENT_ID="YOUR-CLIENT-ID.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="YOUR-CLIENT-SECRET"
+
+# Admin Access Control (Your email address - only this email can access admin)
+ADMIN_ALLOWED_EMAILS="your-email@gmail.com"
