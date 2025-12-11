@@ -5,6 +5,8 @@
 **Status:** Ready for Development  
 **Project:** 4050 Simple Produce Marketplace
 
+> **🔐 Security Note:** A comprehensive security and privacy audit was conducted in December 2024. See [`docs/security-audit.md`](./security-audit.md) for detailed findings, vulnerabilities, and remediation steps.
+
 ---
 
 ## Introduction

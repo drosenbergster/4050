@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
+import { getAuthSession } from '@/lib/server/auth';
 
 export async function GET() {
   try {
@@ -16,7 +17,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  // TODO: Add authentication check here (verify admin session)
+  // Require authentication for product creation
+  const session = await getAuthSession();
+  
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   
   try {
     const body = await request.json();
@@ -35,7 +41,11 @@ export async function POST(request: Request) {
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
     console.error('Failed to create product:', error);
-    return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
+    // Don't expose internal error details in production
+    const errorMessage = process.env.NODE_ENV === 'production' 
+      ? 'Failed to create product' 
+      : error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
