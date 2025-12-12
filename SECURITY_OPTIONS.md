@@ -97,3 +97,5 @@ Just say:
 - "Set up password hashing"
 - "Keep it simple" (I'll use Vercel secrets + current setup)
 
+
+

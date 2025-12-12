@@ -46,3 +46,5 @@ After deployment, check:
 
 **Current Status:** DATABASE_URL needs to be updated in Vercel's environment variables dashboard (I cannot do this automatically via MCP).
 
+
+
