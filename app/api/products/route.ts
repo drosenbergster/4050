@@ -19,14 +19,14 @@ export async function GET() {
 export async function POST(request: Request) {
   // Require authentication for product creation
   const session = await getAuthSession();
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   try {
     const body = await request.json();
-    const { name, description, price, imageUrl, isAvailable } = body;
+    const { name, description, price, imageUrl, category, isAvailable } = body;
 
     const product = await prisma.product.create({
       data: {
@@ -34,6 +34,7 @@ export async function POST(request: Request) {
         description,
         price,
         imageUrl,
+        category,
         isAvailable: isAvailable ?? true,
       },
     });
@@ -42,8 +43,8 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Failed to create product:', error);
     // Don't expose internal error details in production
-    const errorMessage = process.env.NODE_ENV === 'production' 
-      ? 'Failed to create product' 
+    const errorMessage = process.env.NODE_ENV === 'production'
+      ? 'Failed to create product'
       : error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }

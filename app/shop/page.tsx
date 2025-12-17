@@ -23,17 +23,13 @@ async function getProducts(): Promise<(Product & { category: string })[]> {
       orderBy: { name: 'asc' },
     });
     
-    // Map DB products to include category based on name
-    return dbProducts.map((p: Product) => {
-      const matchedProduct = PRODUCTS_DATA.find(pd => pd.name.toLowerCase().includes(p.name.toLowerCase().split(' ')[0]));
-      return {
-        ...p,
-        price: matchedProduct?.price || p.price,
-        category: matchedProduct?.category || 'Other',
-        createdAt: new Date(p.createdAt),
-        updatedAt: new Date(p.updatedAt),
-      };
-    });
+    // Use category from database, fallback to 'Other' if not set
+    return dbProducts.map((p: Product & { category?: string | null }) => ({
+      ...p,
+      category: p.category || 'Other',
+      createdAt: new Date(p.createdAt),
+      updatedAt: new Date(p.updatedAt),
+    }));
   } catch (error) {
     console.error('Database connection failed, using static data:', error);
     return PRODUCTS_DATA;

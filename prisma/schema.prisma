@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // directUrl = env("DIRECT_URL") // Temporarily commented - will use pooler for migration
 }
 
 // Admin user model for authentication
@@ -29,6 +30,7 @@ model Product {
   description String   @db.Text
   price       Int      // Price in cents (e.g., 999 = $9.99)
   imageUrl    String
+  category    String?  // Product category (Applesauce, Jams, Spreads, Dried Goods, Pickled)
   isAvailable Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -36,6 +38,7 @@ model Product {
   orderItems OrderItem[]
 
   @@index([isAvailable])
+  @@index([category])
   @@map("products")
 }
 

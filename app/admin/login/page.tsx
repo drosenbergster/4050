@@ -7,13 +7,24 @@ export default function AdminLogin() {
   const router = useRouter();
 
   const handleGoogleSignIn = async () => {
-    const result = await signIn('google', {
-      callbackUrl: '/admin',
-      redirect: false,
-    });
+    try {
+      console.log('Initiating Google sign in...');
+      const result = await signIn('google', {
+        callbackUrl: '/admin',
+        redirect: false,
+      });
 
-    if (result?.url) {
-      router.push(result.url);
+      console.log('Sign in result:', result);
+
+      if (result?.error) {
+        console.error('Sign in error:', result.error);
+        alert(`Sign in failed: ${result.error}`);
+      } else if (result?.url) {
+        window.location.href = result.url;
+      }
+    } catch (error) {
+      console.error('Sign in exception:', error);
+      alert('An unexpected error occurred during sign in');
     }
   };
 
@@ -26,7 +37,7 @@ export default function AdminLogin() {
           </h2>
           <p className="text-[#636E72]">Sign in to manage your store</p>
         </div>
-        
+
         <div className="space-y-4">
           <button
             onClick={handleGoogleSignIn}
@@ -52,7 +63,7 @@ export default function AdminLogin() {
             </svg>
             Continue with Google
           </button>
-          
+
           <p className="text-xs text-center text-[#636E72] mt-4">
             Only authorized email addresses can sign in
           </p>

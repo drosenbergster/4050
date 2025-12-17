@@ -5,13 +5,10 @@ import Image from 'next/image';
 import { useCart } from '@/app/context/cart-context';
 import { useState } from 'react';
 import { ShoppingCart } from 'lucide-react';
+import { formatPrice } from '@/lib/format';
 
 interface ProductCardNewProps {
   product: Product & { category: string };
-}
-
-function formatPrice(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
 }
 
 export default function ProductCardNew({ product }: ProductCardNewProps) {
@@ -50,40 +47,39 @@ export default function ProductCardNew({ product }: ProductCardNewProps) {
           </div>
         )}
       </div>
-      
+
       {/* Content */}
       <div className="p-5 flex flex-col flex-grow">
         {/* Category Tag */}
         <span className="text-xs font-medium text-[#4A7C59] uppercase tracking-wider mb-2">
           {product.category}
         </span>
-        
+
         {/* Product Name */}
         <h3 className="text-lg font-serif font-bold text-[#5C4A3D] mb-2">
           {product.name}
         </h3>
-        
+
         {/* Description */}
         <p className="text-sm text-[#636E72] line-clamp-2 mb-4 flex-grow">
           {product.description}
         </p>
-        
+
         {/* Price and Add to Cart */}
         <div className="flex items-center justify-between pt-4 border-t border-[#E5DDD3]">
           <span className="text-xl font-bold text-[#5C4A3D]">
             {formatPrice(product.price)}
           </span>
-          
+
           <button
             onClick={handleAddToCart}
             disabled={!product.isAvailable}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-              product.isAvailable
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${product.isAvailable
                 ? isAdding
                   ? 'bg-[#3D6649] text-white'
                   : 'bg-[#4A7C59] text-white hover:bg-[#3D6649]'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
+              }`}
           >
             <ShoppingCart size={16} />
             {isAdding ? 'Added!' : 'Add to Cart'}
