@@ -8,16 +8,8 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     }),
   ],
-  debug: true, // Enable NextAuth debugging
   callbacks: {
-    async signIn({ user, account, profile }) {
-      // Debug config (safe)
-      console.log('🔧 Config Debug:', {
-        clientIdLength: process.env.GOOGLE_CLIENT_ID?.length,
-        clientIdPrefix: process.env.GOOGLE_CLIENT_ID?.substring(0, 10),
-        clientSecretLength: process.env.GOOGLE_CLIENT_SECRET?.length,
-        hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
-      });
+    async signIn({ user }) {
       // Only allow specific email addresses to sign in
       const allowedEmails = process.env.ADMIN_ALLOWED_EMAILS?.split(',').map(e => e.trim()) || [];
 
@@ -25,12 +17,6 @@ export const authOptions: NextAuthOptions = {
         console.error('⚠️  ADMIN_ALLOWED_EMAILS not configured');
         return false;
       }
-
-      console.log('🔐 Auth Debug:', {
-        receivedEmail: user.email,
-        allowedEmails: allowedEmails,
-        match: allowedEmails.includes(user.email || '')
-      });
 
       const isAllowed = allowedEmails.includes(user.email || '');
 
