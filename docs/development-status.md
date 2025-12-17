@@ -11,25 +11,26 @@
   - Cart System (Context, Sidebar, Persistence).
   - About Page (Story and Pickup details).
   - Admin Login & Dashboard UI.
-- [x] Admin Authentication (NextAuth.js credential provider setup).
+- [x] Admin Authentication (NextAuth.js Google OAuth).
+- [x] Admin Product Management (UI + API).
 - [x] API Routes:
   - `api/products` (GET/POST).
+  - `api/products/[id]` (PUT/DELETE).
   - `api/auth/[...nextauth]`.
+- [x] Database:
+  - Connection restored.
+  - Tables fixed (renaming to snake_case).
+  - Manual fixes applied for missing columns.
 - [x] Git repository connected and code pushed.
 
 ## Pending / Blocked
-- [ ] **Database Connection**: Unable to connect to Supabase project `fwagehvkevmjbyujommf` due to region/IPv6 mismatch.
-  - Needs correct Connection String from Supabase Dashboard.
-- [ ] **Database Migration**: `npm run db:migrate` pending connection.
-- [ ] **Database Seeding**: `npm run db:seed` pending connection.
+- [ ] **Database Seeding**: `npm run db:seed` script has issues, but manual data entry via Admin UI works.
 
-## Next Steps (User Action Required)
-1.  Obtain the correct **Transaction Pooler Connection String** (port 6543) from Supabase.
-2.  Create `.env` file from `env.example` and paste the string.
-3.  Run `npm run db:migrate` and `npm run db:seed`.
-4.  Uncomment real data fetching in `app/shop/page.tsx`.
+## Next Steps
+1.  Verify Shop Page displays real data (currently checking).
+2.  Implement Order Management (Admin).
+3.  Implement Checkout/Order placement (User).
 
 ## Known Issues
-- Admin dashboard uses mock data until DB is connected.
-- Shop page uses mock data.
-- Admin login requires `.env` to be set up with `ADMIN_EMAIL`.
+- `npm run db:seed` is unreliable (use Admin UI instead).
+- `prisma.config.ts` causes build noise but deployment works.

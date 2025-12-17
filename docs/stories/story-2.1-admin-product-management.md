@@ -1,7 +1,7 @@
 # Story 2.1: Admin Product Management UI
 
 **Epic:** Epic 2 - Basic Admin  
-**Status:** Ready for Development  
+**Status:** Completed  
 **Story Points:** 5  
 **Priority:** P1 (High)
 
@@ -17,55 +17,55 @@ so that **I can manage my product catalog without using database tools directly*
 
 ## Acceptance Criteria
 
-- [ ] AC1: Admin dashboard Products tab displays a list of all products from the database
-- [ ] AC2: Each product row shows: name, price, category, availability status, and action buttons
-- [ ] AC3: "Add Product" button opens a form/modal to create a new product
-- [ ] AC4: Product form includes: name, description, price, image URL, category, and isAvailable toggle
-- [ ] AC5: "Edit" button on each product opens pre-filled form to update product
-- [ ] AC6: "Delete" button removes product (with confirmation dialog)
-- [ ] AC7: All CRUD operations persist to the database via API routes
-- [ ] AC8: Form validation prevents submitting invalid data (required fields, price format)
-- [ ] AC9: Success/error messages display after each operation
+- [x] AC1: Admin dashboard Products tab displays a list of all products from the database
+- [x] AC2: Each product row shows: name, price, category, availability status, and action buttons
+- [x] AC3: "Add Product" button opens a form/modal to create a new product
+- [x] AC4: Product form includes: name, description, price, image URL, category, and isAvailable toggle
+- [x] AC5: "Edit" button on each product opens pre-filled form to update product
+- [x] AC6: "Delete" button removes product (with confirmation dialog)
+- [x] AC7: All CRUD operations persist to the database via API routes
+- [x] AC8: Form validation prevents submitting invalid data (required fields, price format)
+- [x] AC9: Success/error messages display after each operation
 
 ---
 
 ## Tasks
 
 ### Task 1: Create Product API Routes (PUT/DELETE)
-- [ ] Add `PUT /api/products/[id]` route for updating products
-- [ ] Add `DELETE /api/products/[id]` route for deleting products
-- [ ] Add authentication check to both routes
-- [ ] Test with curl or Postman
+- [x] Add `PUT /api/products/[id]` route for updating products
+- [x] Add `DELETE /api/products/[id]` route for deleting products
+- [x] Add authentication check to both routes
+- [x] Test with curl or Postman
 
 ### Task 2: Build Products List Component
-- [ ] Replace placeholder "coming soon" content in admin Products tab
-- [ ] Fetch products from `/api/products` on mount
-- [ ] Display products in a table/list with columns: Name, Price, Category, Status, Actions
-- [ ] Add loading and error states
+- [x] Replace placeholder "coming soon" content in admin Products tab
+- [x] Fetch products from `/api/products` on mount
+- [x] Display products in a table/list with columns: Name, Price, Category, Status, Actions
+- [x] Add loading and error states
 
 ### Task 3: Create Product Form Component
-- [ ] Build reusable form component for add/edit
-- [ ] Include all fields: name, description, price, imageUrl, category, isAvailable
-- [ ] Implement form validation (required fields, price as number)
-- [ ] Support both "create" and "edit" modes
+- [x] Build reusable form component for add/edit
+- [x] Include all fields: name, description, price, imageUrl, category, isAvailable
+- [x] Implement form validation (required fields, price as number)
+- [x] Support both "create" and "edit" modes
 
 ### Task 4: Implement Add Product Flow
-- [ ] Wire up "Add Product" button to open form
-- [ ] Submit to POST `/api/products`
-- [ ] Show success/error toast
-- [ ] Refresh product list after success
+- [x] Wire up "Add Product" button to open form
+- [x] Submit to POST `/api/products`
+- [x] Show success/error toast
+- [x] Refresh product list after success
 
 ### Task 5: Implement Edit Product Flow
-- [ ] Wire up "Edit" button to open pre-filled form
-- [ ] Submit to PUT `/api/products/[id]`
-- [ ] Show success/error toast
-- [ ] Refresh product list after success
+- [x] Wire up "Edit" button to open pre-filled form
+- [x] Submit to PUT `/api/products/[id]`
+- [x] Show success/error toast
+- [x] Refresh product list after success
 
 ### Task 6: Implement Delete Product Flow
-- [ ] Add confirmation dialog before delete
-- [ ] Submit to DELETE `/api/products/[id]`
-- [ ] Show success/error toast
-- [ ] Refresh product list after success
+- [x] Add confirmation dialog before delete
+- [x] Submit to DELETE `/api/products/[id]`
+- [x] Show success/error toast
+- [x] Refresh product list after success
 
 ---
 

@@ -297,14 +297,12 @@ const blob = await put(file.name, file, {
 ---
 
 ## Authentication
-
-NextAuth.js with credentials provider for admin login:
-
-```typescript
-// Simple email/password authentication
-// Session stored in JWT cookie
-// Protected routes check session
-```
+ 
+ **Admin Authentication:**
+ - **Provider:** Google OAuth 2.0 (via NextAuth.js)
+ - **Access Control:** Whitelist based on `ADMIN_ALLOWED_EMAILS` environment variable
+ - **Session:** Stateless JWT stored in `next-auth.session-token` cookie
+ - **Note:** The `User` database table is currently **unused** as we rely on Google for identity and the allowlist for authorization.
 
 ---
 
@@ -502,9 +500,14 @@ DATABASE_URL=postgresql://...
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=...
 
+# Google OAuth & Admin
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+ADMIN_ALLOWED_EMAILS=user@example.com,user2@example.com
+
 # Stripe
-STRIPE_SECRET_KEY=sk_...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_...
+STRIPE_SECRET_KEY=sk_...
 
 # Vercel Blob
 BLOB_READ_WRITE_TOKEN=vercel_blob_...
