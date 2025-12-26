@@ -11,17 +11,16 @@ export default function AboutPage() {
             <h1 className="text-4xl md:text-5xl font-serif font-bold text-[#5C4A3D] mb-6">
               Our Story
             </h1>
-            <p className="text-xl text-[#636E72] max-w-2xl mx-auto">
-              4050 began in a small kitchen with Ilene&apos;s passion for preserving traditions 
-              and giving back to the community.
+            <p className="text-xl text-[#636E72] max-w-3xl mx-auto italic font-serif">
+              In our Pacific Northwest backyard, two heritage apple trees set the pace for our lives. We don’t decide what to make; we simply listen to the garden and preserve what it provides. 4050 is the address of our home, and the heart of our mission.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-12 items-center mb-20">
-            <div className="relative aspect-video bg-[#F5EDE4] rounded-2xl overflow-hidden">
+            <div className="relative aspect-video bg-[#F5EDE4] rounded-2xl overflow-hidden shadow-inner">
               <Image 
-                src="https://placehold.co/600x400/F5EDE4/8B7355?text=Apple+Orchard" 
-                alt="Large gently sloping backyard with heritage apple trees"
+                src="https://placehold.co/600x400/F5EDE4/8B7355?text=Heritage+Trees+at+4050" 
+                alt="Large gently sloping backyard with two massive heritage apple trees"
                 width={600}
                 height={400}
                 className="w-full h-full object-cover"
@@ -30,13 +29,10 @@ export default function AboutPage() {
             </div>
             <div className="space-y-6">
               <p className="text-lg text-[#636E72] leading-relaxed">
-                What started as sharing homemade applesauce with neighbors has grown into a social enterprise 
-                that brings comfort food to your table while making a real difference in our community.
+                What started as a quiet way to manage the overwhelming bounty of our orchard has grown into a mission of sharing. Every jar of preserves is a conversation—a piece of our heritage trees shared with our neighbors to help those who need it most.
               </p>
               <p className="text-lg text-[#636E72] leading-relaxed">
-                Every jar represents hours of love, traditional methods passed down through generations, 
-                and a commitment to supporting those in need. When you choose 4050, you&apos;re not just buying 
-                preserves – you&apos;re investing in local families and causes.
+                As the world feels a little harder, we&apos;re looking to use our gifts—the smells of autumn, the warmth of a mason jar, and the comfort of homegrown food—to sow seeds of kindness. When you choose a jar from 4050, you&apos;re not just buying food; you&apos;re choosing which part of our community to help flourish.
               </p>
             </div>
           </div>

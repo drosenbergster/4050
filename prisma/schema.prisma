@@ -8,7 +8,9 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  // directUrl = env("DIRECT_URL") // Temporarily commented - will use pooler for migration
+  // For Vercel/serverless runtime: DATABASE_URL should be the transaction pooler (pgbouncer).
+  // For migrations/introspection: DIRECT_URL should be the direct connection.
+  directUrl = env("DIRECT_URL")
 }
 
 // Admin user model for authentication
@@ -69,6 +71,9 @@ model Order {
   shippingCost          Int?              // In cents (flat $10.00 = 1000)
   subtotal              Int               // In cents
   total                 Int               // In cents
+  proceedsChoice        String?           // The cause selected by the customer
+  extraSupportAmount    Int?              @default(0) // Voluntary "Sow Extra Seeds" contribution in cents
+  seedCount             Int               @default(1) // Number of seeds based on spend ($10 = 1 seed)
   paymentStatus         PaymentStatus     @default(PENDING)
   fulfillmentStatus     FulfillmentStatus @default(PENDING)
   stripePaymentIntentId String?           @unique

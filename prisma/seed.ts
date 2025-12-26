@@ -1,19 +1,11 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
+if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is not defined');
 }
 
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-
 const prisma = new PrismaClient({
-  adapter,
   log: ['query', 'error', 'warn'],
 });
 
@@ -24,82 +16,82 @@ async function main() {
   const products = [
     {
       name: 'Classic Applesauce',
-      description: 'Our signature smooth applesauce made from fresh-picked apples. Traditional recipe with natural sweetness.',
+      description: "The heritage trees at 4050 don't ask for permission to be generous. This is the smooth, honest taste of a PNW autumn—pure, sun-ripened apples and nothing else.",
       price: 899, // $8.99
-      category: 'Applesauce',
-      imageUrl: 'https://placehold.co/400x400/F5EDE4/8B7355?text=Classic+Applesauce',
+      category: 'Applesauces',
+      imageUrl: 'https://placehold.co/400x400/F5EDE4/5C4A3D?text=Classic+Applesauce',
       isAvailable: true,
     },
     {
       name: 'Sugar-Free Applesauce',
-      description: 'Pure applesauce with no added sugar. Just the natural sweetness of homegrown apples.',
+      description: 'Exactly as the garden provided. No extra sweetness needed when the morning mist and afternoon sun have already done the work. Just heritage apples, slow-simmered.',
       price: 899, // $8.99
-      category: 'Applesauce',
-      imageUrl: 'https://placehold.co/400x400/F5EDE4/8B7355?text=Sugar-Free+Applesauce',
+      category: 'Applesauces',
+      imageUrl: 'https://placehold.co/400x400/F5EDE4/5C4A3D?text=Sugar-Free+Applesauce',
       isAvailable: true,
     },
     {
       name: 'Apple Rings',
-      description: 'Delicately dried apple rings. Perfect for snacking or adding to your favorite recipes.',
+      description: 'Thinly sliced memories of the orchard, dried slowly by the kitchen window. A concentrated crunch of the Pacific Northwest autumn, perfect for sharing over a fence.',
       price: 799, // $7.99
       category: 'Dried Goods',
-      imageUrl: 'https://placehold.co/400x400/F5EDE4/8B7355?text=Apple+Rings',
+      imageUrl: 'https://placehold.co/400x400/F5EDE4/5C4A3D?text=Apple+Rings',
       isAvailable: true,
     },
     {
       name: 'Apple Butter',
-      description: 'Rich, creamy apple butter slow-cooked to perfection. Spread it on toast or enjoy by the spoonful.',
+      description: "A concentrated harvest. We take the abundance of our two oldest trees and slow-cook it until it's dark, rich, and carries the deep essence of the 4050 backyard.",
       price: 1099, // $10.99
       category: 'Spreads',
-      imageUrl: 'https://placehold.co/400x400/F5EDE4/8B7355?text=Apple+Butter',
+      imageUrl: 'https://placehold.co/400x400/F5EDE4/5C4A3D?text=Apple+Butter',
       isAvailable: true,
     },
     {
       name: 'Apple Chips',
-      description: 'Crispy, naturally sweet apple chips. A healthy snack made from orchard-fresh apples.',
+      description: 'Crispy, sun-kissed slices of our backyard bounty. Simple and honest, like a conversation on a porch swing. No additives, just air and orchard-fresh flavor.',
       price: 699, // $6.99
       category: 'Dried Goods',
-      imageUrl: 'https://placehold.co/400x400/F5EDE4/8B7355?text=Apple+Chips',
+      imageUrl: 'https://placehold.co/400x400/F5EDE4/5C4A3D?text=Apple+Chips',
       isAvailable: true,
     },
     {
       name: 'Raspberry Jam',
-      description: 'Vibrant raspberry jam bursting with fresh berry flavor. Perfect for your morning toast.',
+      description: 'From the wild brambles that insisted on growing over the garden fence. Bright, tart, and bursting with the vibrant energy of a PNW summer morning.',
       price: 1199, // $11.99
       category: 'Jams',
-      imageUrl: 'https://placehold.co/400x400/F5EDE4/8B7355?text=Raspberry+Jam',
+      imageUrl: 'https://placehold.co/400x400/F5EDE4/5C4A3D?text=Raspberry+Jam',
       isAvailable: true,
     },
     {
       name: 'Blueberry Jam',
-      description: 'Sweet blueberry jam made with handpicked berries. A family favorite for generations.',
+      description: "The garden was particularly kind this July. We've preserved that generosity in every jar—fat, sun-warmed berries turned into a sweet morning tradition.",
       price: 1199, // $11.99
       category: 'Jams',
-      imageUrl: 'https://placehold.co/400x400/F5EDE4/8B7355?text=Blueberry+Jam',
+      imageUrl: 'https://placehold.co/400x400/F5EDE4/5C4A3D?text=Blueberry+Jam',
       isAvailable: true,
     },
     {
       name: 'Apple Jam',
-      description: "Unique apple jam with hints of cinnamon. Ilene's special recipe passed down through generations.",
+      description: "A different way to celebrate what the heritage trees gave us this year. Ilene's secret recipe, spiked with a touch of cinnamon and a lot of gratitude.",
       price: 1099, // $10.99
       category: 'Jams',
-      imageUrl: 'https://placehold.co/400x400/F5EDE4/8B7355?text=Apple+Jam',
+      imageUrl: 'https://placehold.co/400x400/F5EDE4/5C4A3D?text=Apple+Jam',
       isAvailable: true,
     },
     {
       name: 'Pickled Green Beans',
-      description: 'Crisp, tangy pickled green beans. A delicious addition to any meal or charcuterie board.',
+      description: 'The garden gave us more beans than we could eat fresh, so we honored their crunch with a tangy brine. A sharp, savory snap from the 4050 soil.',
       price: 999, // $9.99
-      category: 'Pickled',
-      imageUrl: 'https://placehold.co/400x400/F5EDE4/8B7355?text=Pickled+Green+Beans',
+      category: 'Pickled Goods',
+      imageUrl: 'https://placehold.co/400x400/F5EDE4/5C4A3D?text=Pickled+Green+Beans',
       isAvailable: true,
     },
     {
       name: 'Classic Dill Pickles',
-      description: 'Crunchy dill pickles with the perfect balance of tangy and savory flavors.',
+      description: 'Straight from the dark PNW soil to the pickling jar. Honest, crunchy, and packed with the herbs that grow between our heritage apple trees.',
       price: 999, // $9.99
-      category: 'Pickled',
-      imageUrl: 'https://placehold.co/400x400/F5EDE4/8B7355?text=Classic+Dill+Pickles',
+      category: 'Pickled Goods',
+      imageUrl: 'https://placehold.co/400x400/F5EDE4/5C4A3D?text=Classic+Dill+Pickles',
       isAvailable: true,
     },
   ];

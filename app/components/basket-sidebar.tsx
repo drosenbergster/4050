@@ -1,33 +1,34 @@
 'use client';
 
-import { X, Minus, Plus, Trash2 } from 'lucide-react';
-import { useCart } from '@/app/context/cart-context';
+import { X, Minus, Plus, Trash2, ShoppingBasket } from 'lucide-react';
+import { useBasket } from '@/app/context/basket-context';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-export default function CartSidebar() {
+export default function BasketSidebar() {
   const {
-    isCartOpen,
-    toggleCart,
+    isBasketOpen,
+    toggleBasket,
     items,
     updateQuantity,
-    removeFromCart,
+    removeFromBasket,
     subtotal,
     itemCount
-  } = useCart();
+  } = useBasket();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Prevent body scroll when cart is open
+  // Prevent body scroll when basket is open
   useEffect(() => {
-    if (isCartOpen) {
+    if (isBasketOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -35,32 +36,31 @@ export default function CartSidebar() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isCartOpen]);
+  }, [isBasketOpen]);
 
   return (
     <>
       {/* Backdrop */}
-      {isCartOpen && (
+      {isBasketOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-50 transition-opacity"
-          onClick={toggleCart}
+          onClick={toggleBasket}
         />
       )}
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 right-0 z-50 w-full md:w-[420px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${
-          isCartOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className={`fixed inset-y-0 right-0 z-50 w-full md:w-[420px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${isBasketOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="px-6 py-5 border-b border-[#E5DDD3] flex items-center justify-between bg-[#FDF8F3]">
-            <h2 className="text-xl font-serif font-bold text-[#5C4A3D]">
-              Your Cart{mounted && itemCount > 0 ? ` (${itemCount})` : ''}
+            <h2 className="text-xl font-serif font-bold text-[#5C4A3D] flex items-center gap-2">
+              Your Basket{mounted && itemCount > 0 ? ` (${itemCount})` : ''}
             </h2>
             <button
-              onClick={toggleCart}
+              onClick={toggleBasket}
               className="p-2 text-[#636E72] hover:text-[#5C4A3D] transition-colors rounded-full hover:bg-[#E5DDD3]"
             >
               <X size={24} />
@@ -76,11 +76,11 @@ export default function CartSidebar() {
             ) : items.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-12">
                 <div className="w-20 h-20 bg-[#F5EDE4] rounded-full flex items-center justify-center text-[#8B7355]">
-                  <X size={36} />
+                  <ShoppingBasket size={36} />
                 </div>
-                <p className="text-[#636E72] text-lg">Your cart is empty</p>
+                <p className="text-[#636E72] text-lg">Your basket is empty</p>
                 <button
-                  onClick={toggleCart}
+                  onClick={toggleBasket}
                   className="text-[#4A7C59] font-medium underline hover:text-[#3D6649]"
                 >
                   Continue Shopping
@@ -113,25 +113,27 @@ export default function CartSidebar() {
                       </p>
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center border border-[#E5DDD3] rounded-lg overflow-hidden">
+                      <div className="flex items-center border border-[#E5DDD3] rounded-lg overflow-hidden bg-white">
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                          className="p-2 hover:bg-[#F5EDE4] text-[#636E72] transition-colors"
+                          className="p-3 sm:p-2 hover:bg-[#F5EDE4] text-[#636E72] transition-colors active:bg-[#E5DDD3]"
+                          aria-label="Decrease quantity"
                         >
                           <Minus size={14} />
                         </button>
-                        <span className="px-3 text-sm min-w-[2rem] text-center font-medium text-[#5C4A3D]">
+                        <span className="px-3 text-sm min-w-[2.5rem] text-center font-bold text-[#5C4A3D] tabular-nums">
                           {item.quantity}
                         </span>
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                          className="p-2 hover:bg-[#F5EDE4] text-[#636E72] transition-colors"
+                          className="p-3 sm:p-2 hover:bg-[#F5EDE4] text-[#636E72] transition-colors active:bg-[#E5DDD3]"
+                          aria-label="Increase quantity"
                         >
                           <Plus size={14} />
                         </button>
                       </div>
                       <button
-                        onClick={() => removeFromCart(item.productId)}
+                        onClick={() => removeFromBasket(item.productId)}
                         className="text-red-400 hover:text-red-600 p-2 transition-colors"
                         aria-label="Remove item"
                       >
@@ -156,9 +158,13 @@ export default function CartSidebar() {
               <p className="text-xs text-[#636E72] mb-4 text-center">
                 Shipping and taxes calculated at checkout.
               </p>
-              <button className="w-full bg-[#4A7C59] text-white py-3.5 px-4 rounded-lg font-medium hover:bg-[#3D6649] transition-colors text-lg">
+              <Link
+                href="/checkout"
+                onClick={toggleBasket}
+                className="w-full bg-[#4A7C59] text-white py-3.5 px-4 rounded-lg font-medium hover:bg-[#3D6649] transition-colors text-lg flex items-center justify-center"
+              >
                 Checkout
-              </button>
+              </Link>
             </div>
           )}
         </div>

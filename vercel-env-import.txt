@@ -13,4 +13,4 @@ GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
 
 # Admin Access Control (comma-separated emails)
-ADMIN_ALLOWED_EMAILS=drosenbergster@gmail.com
+ADMIN_ALLOWED_EMAILS=drosenbergster@gmail.com,pdxpitgal@gmail.com

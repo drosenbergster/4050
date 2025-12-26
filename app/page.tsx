@@ -17,9 +17,8 @@ export default function Home() {
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-[#5C4A3D] mt-4 mb-6 leading-tight">
                 Handpicked. Homemade. Heartfelt.
               </h1>
-              <p className="text-lg text-[#636E72] mb-8 max-w-xl">
-                Pure, simple ingredients grown in our backyard and preserved with generations of care. 
-                Every jar you buy feeds a family, supports a cause, and connects our community—one delicious spoonful at a time.
+              <p className="text-lg text-[#636E72] mb-8 max-w-xl font-serif italic">
+                In our Pacific Northwest backyard, the heritage trees provide. We simply take what’s given and turn it into something to share.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
                 <Link
@@ -40,11 +39,12 @@ export default function Home() {
               <div className="relative w-full aspect-square max-w-lg mx-auto">
                 <div className="w-full h-full bg-[#F5EDE4] rounded-2xl flex items-center justify-center overflow-hidden">
                   <Image 
-                    src="https://placehold.co/500x500/F5EDE4/8B7355?text=Homemade+Jars" 
-                    alt="Homemade applesauce jars"
+                    src="https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?w=500&h=500&fit=crop&q=80" 
+                    alt="Large apple trees in a spacious backyard"
                     width={500}
                     height={500}
                     className="w-full h-full object-cover rounded-2xl"
+                    priority
                     unoptimized
                   />
                 </div>
@@ -66,15 +66,15 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#5C4A3D] mb-4">
               Our Story
             </h2>
-            <p className="text-lg text-[#636E72] max-w-2xl mx-auto">
-              4050 began in a small kitchen with Ilene&apos;s passion for preserving traditions and giving back to the community.
+            <p className="text-lg text-[#636E72] max-w-2xl mx-auto italic font-serif">
+              The garden doesn’t have a schedule. It just provides. 4050 is our way of making sure none of that generosity goes to waste.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
             <div className="relative aspect-video bg-[#F5EDE4] rounded-2xl overflow-hidden">
               <Image 
-                src="https://placehold.co/600x400/F5EDE4/8B7355?text=Apple+Orchard" 
+                src="https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?w=600&h=400&fit=crop&q=80" 
                 alt="Large gently sloping backyard with heritage apple trees"
                 width={600}
                 height={400}

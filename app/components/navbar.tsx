@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, X, Leaf } from 'lucide-react';
+import { ShoppingBasket, Menu, X, Leaf } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useCart } from '@/app/context/cart-context';
+import { useBasket } from '@/app/context/basket-context';
 
 export default function Navbar() {
-  const { toggleCart, itemCount } = useCart();
+  const { toggleBasket, itemCount } = useBasket();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -25,7 +25,7 @@ export default function Navbar() {
             </div>
             <span className="text-2xl font-serif font-bold text-[#5C4A3D]">4050</span>
           </Link>
-
+          
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <Link href="/" className="text-[#636E72] hover:text-[#4A7C59] transition-colors font-medium">
@@ -41,12 +41,12 @@ export default function Navbar() {
               Our Impact
             </Link>
             <button
-              onClick={toggleCart}
+              onClick={toggleBasket}
               className="flex items-center gap-2 bg-[#4A7C59] text-white px-4 py-2 rounded-lg hover:bg-[#3D6649] transition-colors"
-              aria-label="Open cart"
+              aria-label="Open basket"
             >
-              <ShoppingCart size={18} />
-              <span>Cart</span>
+              <ShoppingBasket size={18} />
+              <span>Basket</span>
               {mounted && itemCount > 0 && (
                 <span className="bg-white text-[#4A7C59] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {itemCount}
@@ -58,10 +58,10 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center space-x-4">
             <button
-              onClick={toggleCart}
+              onClick={toggleBasket}
               className="relative p-2 text-[#5C4A3D] hover:text-[#4A7C59] transition-colors"
             >
-              <ShoppingCart size={24} />
+              <ShoppingBasket size={24} />
               {mounted && itemCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-[#4A7C59] text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {itemCount}
@@ -79,40 +79,42 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Navigation */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-[#FDF8F3] border-t border-[#E5DDD3]">
-          <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
-            <Link
-              href="/"
-              className="text-[#636E72] hover:text-[#4A7C59] text-lg font-medium"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Home
-            </Link>
-            <Link
-              href="/about"
-              className="text-[#636E72] hover:text-[#4A7C59] text-lg font-medium"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              About
-            </Link>
-            <Link
-              href="/shop"
-              className="text-[#636E72] hover:text-[#4A7C59] text-lg font-medium"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Products
-            </Link>
-            <Link
-              href="/#impact"
-              className="text-[#636E72] hover:text-[#4A7C59] text-lg font-medium"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Our Impact
-            </Link>
-          </div>
+      <div 
+        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out bg-[#FDF8F3] border-t border-[#E5DDD3] ${
+          isMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="container mx-auto px-4 py-6 flex flex-col space-y-5">
+          <Link
+            href="/"
+            className="text-[#636E72] hover:text-[#4A7C59] text-xl font-serif font-bold transition-colors active:translate-x-1 duration-200"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            Home
+          </Link>
+          <Link
+            href="/about"
+            className="text-[#636E72] hover:text-[#4A7C59] text-xl font-serif font-bold transition-colors active:translate-x-1 duration-200"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            About
+          </Link>
+          <Link
+            href="/shop"
+            className="text-[#636E72] hover:text-[#4A7C59] text-xl font-serif font-bold transition-colors active:translate-x-1 duration-200"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            Products
+          </Link>
+          <Link
+            href="/#impact"
+            className="text-[#636E72] hover:text-[#4A7C59] text-xl font-serif font-bold transition-colors active:translate-x-1 duration-200"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            Our Impact
+          </Link>
         </div>
-      )}
+      </div>
     </nav>
   );
 }

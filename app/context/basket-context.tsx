@@ -1,69 +1,73 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
-import { CartItemWithProduct, Product } from '@/lib/types';
+import { BasketItemWithProduct, Product } from '@/lib/types';
 
-interface CartState {
-  items: CartItemWithProduct[];
+interface BasketState {
+  items: BasketItemWithProduct[];
   subtotal: number;
   itemCount: number;
 }
 
-interface CartContextType extends CartState {
-  addToCart: (product: Product, quantity: number) => void;
-  removeFromCart: (productId: string) => void;
+interface BasketContextType extends BasketState {
+  addToBasket: (product: Product, quantity: number) => void;
+  removeFromBasket: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
-  clearCart: () => void;
-  isCartOpen: boolean;
-  toggleCart: () => void;
+  clearBasket: () => void;
+  isBasketOpen: boolean;
+  toggleBasket: () => void;
+  toast: { message: string; isVisible: boolean };
+  showToast: (message: string) => void;
+  hideToast: () => void;
 }
 
-const CartContext = createContext<CartContextType | undefined>(undefined);
+const BasketContext = createContext<BasketContextType | undefined>(undefined);
 
-const STORAGE_KEY = '4050_cart';
+const STORAGE_KEY = '4050_basket';
 
-const initialState: CartState = {
+const initialState: BasketState = {
   items: [],
   subtotal: 0,
   itemCount: 0,
 };
 
-// Helper function to load cart from localStorage
-function loadCartFromStorage(): CartState {
+// Helper function to load basket from localStorage
+function loadBasketFromStorage(): BasketState {
   if (typeof window === 'undefined') return initialState;
-  
+
   try {
-    const savedCart = localStorage.getItem(STORAGE_KEY);
-    if (savedCart) {
-      const parsed = JSON.parse(savedCart);
+    const savedBasket = localStorage.getItem(STORAGE_KEY);
+    if (savedBasket) {
+      const parsed = JSON.parse(savedBasket);
       const items = parsed.items || [];
-      const subtotal = items.reduce((sum: number, item: CartItemWithProduct) => sum + (item.product.price * item.quantity), 0);
-      const itemCount = items.reduce((count: number, item: CartItemWithProduct) => count + item.quantity, 0);
+      const subtotal = items.reduce((sum: number, item: BasketItemWithProduct) => sum + (item.product.price * item.quantity), 0);
+      const itemCount = items.reduce((count: number, item: BasketItemWithProduct) => count + item.quantity, 0);
       return { items, subtotal, itemCount };
     }
   } catch {
-    console.error('Failed to load cart from localStorage');
+    console.error('Failed to load basket from localStorage');
   }
   return initialState;
 }
 
-// Helper function to save cart to localStorage
-function saveCartToStorage(state: CartState): void {
+// Helper function to save basket to localStorage
+function saveBasketToStorage(state: BasketState): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }
 }
 
-export function CartProvider({ children }: { children: ReactNode }) {
+export function BasketProvider({ children }: { children: ReactNode }) {
   // Initialize with a function to avoid SSR issues - the function only runs on client
-  const [state, setState] = useState<CartState>(() => {
+  const [state, setState] = useState<BasketState>(() => {
     if (typeof window !== 'undefined') {
-      return loadCartFromStorage();
+      return loadBasketFromStorage();
     }
     return initialState;
   });
-  
-  const [isCartOpen, setIsCartOpen] = useState(false);
+
+  const [isBasketOpen, setIsBasketOpen] = useState(false);
+  const [toast, setToast] = useState({ message: '', isVisible: false });
   const isMountedRef = useRef(false);
 
   // Mark as mounted after first render and sync localStorage
@@ -71,22 +75,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (!isMountedRef.current) {
       isMountedRef.current = true;
       // Re-load from storage in case SSR had different data
-      const stored = loadCartFromStorage();
+      const stored = loadBasketFromStorage();
       if (JSON.stringify(stored) !== JSON.stringify(state)) {
         setState(stored);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save to localStorage when state changes (skip initial mount)
   useEffect(() => {
     if (isMountedRef.current) {
-      saveCartToStorage(state);
+      saveBasketToStorage(state);
     }
   }, [state]);
 
-  const addToCart = useCallback((product: Product, quantity: number) => {
+  const addToBasket = useCallback((product: Product, quantity: number) => {
     setState((prev) => {
       const existingItemIndex = prev.items.findIndex((item) => item.productId === product.id);
       let newItems;
@@ -101,11 +105,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       } else {
         newItems = [
           ...prev.items,
-          { 
-            productId: product.id, 
-            quantity, 
-            product, 
-            lineTotal: quantity * product.price 
+          {
+            productId: product.id,
+            quantity,
+            product,
+            lineTotal: quantity * product.price
           }
         ];
       }
@@ -115,10 +119,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       return { items: newItems, subtotal, itemCount };
     });
-    setIsCartOpen(true);
+    // Removed auto-open for better UX
+    // setIsBasketOpen(true);
+    setToast({ message: `Added ${quantity} ${product.name} to basket`, isVisible: true });
   }, []);
 
-  const removeFromCart = useCallback((productId: string) => {
+  const showToast = useCallback((message: string) => {
+    setToast({ message, isVisible: true });
+  }, []);
+
+  const hideToast = useCallback(() => {
+    setToast((prev) => ({ ...prev, isVisible: false }));
+  }, []);
+
+  const removeFromBasket = useCallback((productId: string) => {
     setState((prev) => {
       const newItems = prev.items.filter((item) => item.productId !== productId);
       const subtotal = newItems.reduce((sum, item) => sum + item.lineTotal, 0);
@@ -134,48 +148,51 @@ export function CartProvider({ children }: { children: ReactNode }) {
         newItems = prev.items.filter((item) => item.productId !== productId);
       } else {
         newItems = prev.items.map((item) =>
-          item.productId === productId 
-            ? { ...item, quantity, lineTotal: quantity * item.product.price } 
+          item.productId === productId
+            ? { ...item, quantity, lineTotal: quantity * item.product.price }
             : item
         );
       }
 
       const subtotal = newItems.reduce((sum, item) => sum + item.lineTotal, 0);
       const itemCount = newItems.reduce((count, item) => count + item.quantity, 0);
-      
+
       return { items: newItems, subtotal, itemCount };
     });
   }, []);
 
-  const clearCart = useCallback(() => {
+  const clearBasket = useCallback(() => {
     setState(initialState);
   }, []);
 
-  const toggleCart = useCallback(() => {
-    setIsCartOpen((prev) => !prev);
+  const toggleBasket = useCallback(() => {
+    setIsBasketOpen((prev) => !prev);
   }, []);
 
   return (
-    <CartContext.Provider
+    <BasketContext.Provider
       value={{
         ...state,
-        addToCart,
-        removeFromCart,
+        addToBasket,
+        removeFromBasket,
         updateQuantity,
-        clearCart,
-        isCartOpen,
-        toggleCart,
+        clearBasket,
+        isBasketOpen,
+        toggleBasket,
+        toast,
+        showToast,
+        hideToast,
       }}
     >
       {children}
-    </CartContext.Provider>
+    </BasketContext.Provider>
   );
 }
 
-export function useCart() {
-  const context = useContext(CartContext);
+export function useBasket() {
+  const context = useContext(BasketContext);
   if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
+    throw new Error('useBasket must be used within a BasketProvider');
   }
   return context;
 }

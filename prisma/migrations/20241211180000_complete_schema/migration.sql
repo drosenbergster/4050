@@ -97,3 +97,8 @@ ALTER TABLE "order_items" ADD CONSTRAINT "order_items_productId_fkey" FOREIGN KE
 
 
 
+
+
+
+
+
