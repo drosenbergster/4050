@@ -9,18 +9,15 @@ type CheckoutItemInput = {
     quantity: number;
 };
 
-// Initialize Stripe
+// Initialize Stripe lazily to avoid crashing the build when STRIPE_SECRET_KEY is unset.
+// (Vercel builds import route modules; throwing at import time fails the deployment.)
 const getStripe = () => {
     const key = process.env.STRIPE_SECRET_KEY;
-    if (!key && process.env.NODE_ENV === 'production') {
-        throw new Error('STRIPE_SECRET_KEY is missing in production');
-    }
-    return new Stripe(key || 'mock_key', {
+    if (!key) return null;
+    return new Stripe(key, {
         apiVersion: '2025-12-15.clover' as Stripe.LatestApiVersion,
     });
 };
-
-const stripe = getStripe();
 
 const SHIPPING_COST_CENTS = 1000; // $10.00
 
@@ -186,6 +183,16 @@ export async function POST(request: Request) {
                 clientSecret: 'mock_secret',
                 orderId: mockOrderId,
             });
+        }
+
+        const stripe = getStripe();
+        if (!stripe) {
+            // In production, Stripe must be configured to accept payments.
+            // Return a safe error instead of throwing during module import/build.
+            return NextResponse.json(
+                { error: 'Payments are temporarily unavailable. Please try again later.' },
+                { status: 503 }
+            );
         }
 
         // Standard Stripe Flow (Hardened):
