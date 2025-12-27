@@ -127,7 +127,7 @@ export default function ProductList() {
             
             // Update local state immediately
             setProducts(prev => prev.map(p => 
-                p.id === product.id ? { ...p, category: newCategory || undefined } : p
+                p.id === product.id ? { ...p, category: newCategory || null } : p
             ));
             showSuccess('Category updated');
         } catch (err) {
