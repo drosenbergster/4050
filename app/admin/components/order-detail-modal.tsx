@@ -20,7 +20,7 @@ export default function OrderDetailModal({
 }: OrderDetailModalProps) {
   if (!isOpen || !order) return null;
 
-  const cause = CURRENT_CAUSES.find(c => c.id === order.proceedsChoice);
+  const cause = order.proceedsChoice ? CURRENT_CAUSES.find(c => c.id === order.proceedsChoice) : null;
   const canPrintShipping = order.fulfillmentMethod === 'SHIPPING' && !!order.shippingAddress;
 
   return (

@@ -43,6 +43,10 @@ export interface Order {
   stripePaymentIntentId: string | null;
   createdAt: Date;
   updatedAt: Date;
+  // Seeds of Kindness fields (optional - may not be present in all orders)
+  proceedsChoice?: string | null;
+  seedCount?: number | null;
+  extraSupportAmount?: number | null;
 }
 
 export interface OrderItem {
