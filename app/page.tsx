@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, Leaf, Users } from 'lucide-react';
+import { Heart, Leaf, Users, Sprout, ArrowRight } from 'lucide-react';
 import ProductPreview from '@/app/components/product-preview';
 
 export default function Home() {
@@ -143,25 +143,50 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Community Impact Teaser */}
+      {/* Community Impact & Seeds Teaser */}
       <section id="impact" className="bg-white py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <div className="bg-[#4A7C59] rounded-2xl p-8 md:p-12 text-center text-white">
-              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">
-                Our Community Impact
-              </h2>
-              <div className="text-6xl md:text-7xl font-bold mb-4">100%</div>
-              <p className="text-lg md:text-xl opacity-90 mb-8 max-w-2xl mx-auto">
-                Every penny of profit goes directly to supporting local families, food banks, 
-                community gardens, and youth programs.
-              </p>
-              <Link
-                href="/impact"
-                className="inline-block bg-white text-[#4A7C59] px-8 py-3 rounded-lg font-medium hover:bg-[#F5EDE4] transition-all hover:-translate-y-0.5"
-              >
-                See Our Impact
-              </Link>
+            <div className="bg-[#4A7C59] rounded-2xl p-8 md:p-12 text-white">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium mb-6">
+                  <Sprout size={16} />
+                  Plant Seeds of Kindness
+                </div>
+                <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">
+                  You Choose Where Help Grows
+                </h2>
+                <p className="text-lg opacity-90 max-w-2xl mx-auto">
+                  Every purchase plants seeds. Every quarter, we tally up all the seeds our community has planted 
+                  and distribute 100% of profits to local organizations—proportionally based on your choices.
+                </p>
+              </div>
+
+              {/* How it works mini */}
+              <div className="grid sm:grid-cols-3 gap-6 mb-8">
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 text-center">
+                  <div className="text-2xl font-bold mb-1">1</div>
+                  <div className="text-sm opacity-90">You shop &amp; earn seeds</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 text-center">
+                  <div className="text-2xl font-bold mb-1">2</div>
+                  <div className="text-sm opacity-90">You pick an organization</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 text-center">
+                  <div className="text-2xl font-bold mb-1">3</div>
+                  <div className="text-sm opacity-90">We distribute proportionally</div>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <Link
+                  href="/impact"
+                  className="inline-flex items-center gap-2 bg-white text-[#4A7C59] px-8 py-3 rounded-lg font-medium hover:bg-[#F5EDE4] transition-all hover:-translate-y-0.5"
+                >
+                  Learn How Seeds Work
+                  <ArrowRight size={18} />
+                </Link>
+              </div>
             </div>
           </div>
         </div>

@@ -202,7 +202,7 @@ export default function CheckoutPage() {
     };
 
     const handlePaymentSuccess = () => {
-        router.push(`/thank-you?order_id=${orderId}`);
+        router.push(`/thank-you?order_id=${orderId}&cause=${proceedsChoice}&seeds=${seedCount}`);
     };
 
     // Redirect if empty basket

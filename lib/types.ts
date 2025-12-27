@@ -11,6 +11,7 @@ export interface Product {
   description: string;
   price: number; // in cents (e.g., 999 = $9.99)
   imageUrl: string;
+  category: string | null;
   isAvailable: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -85,5 +86,56 @@ export interface CartWithProducts {
   items: CartItemWithProduct[];
   subtotal: number; // sum of all line totals
   itemCount: number; // sum of all quantities
+}
+
+// ============================================
+// COGS Calculator Types (Planning Tools)
+// ============================================
+
+export interface Ingredient {
+  id: string;
+  name: string;
+  unitCost: number;
+  unit: string;
+  isFromGarden: boolean;
+  category: string | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CogsRecipeIngredient {
+  id: string;
+  recipeId: string;
+  ingredientId: string;
+  quantity: number;
+  ingredient: Ingredient;
+}
+
+export interface CogsRecipe {
+  id: string;
+  name: string;
+  description: string | null;
+  containerType: string;
+  containerCost: number;
+  labelCost: number;
+  energyCost: number;
+  retailPrice: number;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  ingredients: CogsRecipeIngredient[];
+}
+
+// Calculated cost breakdown for a recipe
+export interface RecipeCostBreakdown {
+  ingredientsCost: number;
+  containerCost: number;
+  labelCost: number;
+  energyCost: number;
+  totalCost: number;
+  retailPrice: number;
+  profit: number;
+  marginPercent: number;
 }
 

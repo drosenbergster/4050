@@ -34,6 +34,19 @@
   - **Orders Tab**: Added pending count badge, "Pending Only" / "All Orders" filter buttons, "Today's Tasks" summary box.
   - **Admin Layout**: Hidden public navbar/footer in admin for focused experience.
   - **Dev Testing**: Added `/admin/dev` page for localhost-only testing without OAuth.
+- [x] **Recipe Costing Feature (Dec 27, 2025)**:
+  - **New Admin Tab**: "Recipe Costing" for planning product costs and margins. 📊
+  - **Ingredient Library**: 45+ ingredients across 3 categories:
+    - **Garden** 🌱 - Homegrown produce (apples, tomatoes, herbs, squash, etc.)
+    - **Pantry** 🛒 - Purchased items (sugar, spices, vinegar, etc.)
+    - **Packaging** 📦 - Containers (mason jars, bags, labels, lids)
+  - **Recipe Cards**: 16 pre-loaded recipes with full cost breakdowns
+  - **Live Cost Calculator**: Shows Cost, Price, Profit (You Earn), and Margin %
+  - **Margin Color Coding**: Visual indicators (green = excellent, amber = review)
+  - **Full CRUD**: Add/edit/delete ingredients and recipes from admin UI
+  - **Database Persistence**: All changes saved to PostgreSQL via Prisma
+  - **API Routes**: Complete REST API for ingredients and recipes
+  - **UX Polish**: Friendly copy, "You Earn" instead of "Profit", mom-friendly interface
 
 ## Pending / Blocked
 - [ ] **Stripe Live Mode**: Awaiting live API keys for production testing.

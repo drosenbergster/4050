@@ -1,7 +1,7 @@
 # 4050 Simplified Architecture Document
 
-**Version:** 2.3 (Operational Admin Update)  
-**Date:** December 19, 2025  
+**Version:** 2.4 (Recipe Costing Feature)  
+**Date:** December 27, 2025  
 **Status:** In Development  
 **Project:** 4050 Homemade Kindness
 
@@ -15,6 +15,7 @@ This document outlines the simplified fullstack architecture for 4050, focused o
 
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
+| 2025-12-27 | 2.4 | Added Recipe Costing feature with Ingredient Library | Winston (Architect) |
 | 2025-12-19 | 2.3 | Added Admin Order API routes and Search logic | James (Dev) |
 | 2025-12-18 | 2.2 | Transitioned from "Voices" to "Seeds of Kindness" ($10 = 1 seed) | John (PM) |
 | 2025-12-18 | 2.1 | Refocused terminology (Basket, Homemade Goods, Impact Tracker) | Mary (Analyst) |
@@ -49,15 +50,30 @@ This document outlines the simplified fullstack architecture for 4050, focused o
 
 ## API Routes
 
+### Public API
 | Endpoint | Method | Purpose | Auth Required |
 |----------|--------|---------|---------------|
 | `/api/products` | GET | Fetch public product list | No |
-| `/api/products` | POST | Create new product | Yes (Admin) |
-| `/api/products/[id]` | PUT/DELETE | Update/Delete product | Yes (Admin) |
 | `/api/checkout` | POST | Initialize Stripe and Order | No |
 | `/api/webhooks/stripe` | POST | Handle Stripe payment success/fail | No |
+
+### Admin API
+| Endpoint | Method | Purpose | Auth Required |
+|----------|--------|---------|---------------|
+| `/api/products` | POST | Create new product | Yes (Admin) |
+| `/api/products/[id]` | PUT/DELETE | Update/Delete product | Yes (Admin) |
 | `/api/admin/orders` | GET | Fetch all orders with items | Yes (Admin) |
 | `/api/admin/orders/[id]` | PATCH | Update order status | Yes (Admin) |
+
+### Recipe Costing API (Admin Planning Tools)
+| Endpoint | Method | Purpose | Auth Required |
+|----------|--------|---------|---------------|
+| `/api/admin/cogs/ingredients` | GET | List all ingredients | Yes (Admin) |
+| `/api/admin/cogs/ingredients` | POST | Create new ingredient | Yes (Admin) |
+| `/api/admin/cogs/ingredients/[id]` | GET/PATCH/DELETE | Manage single ingredient | Yes (Admin) |
+| `/api/admin/cogs/recipes` | GET | List all recipes with ingredients | Yes (Admin) |
+| `/api/admin/cogs/recipes` | POST | Create new recipe | Yes (Admin) |
+| `/api/admin/cogs/recipes/[id]` | GET/PATCH/DELETE | Manage single recipe | Yes (Admin) |
 
 ---
 
@@ -73,6 +89,20 @@ This document outlines the simplified fullstack architecture for 4050, focused o
 - **seedCount**: Calculated seeds sown (1 base + 1 per $10)
 - shippingCost, subtotal, total, paymentStatus, fulfillmentStatus, stripePaymentIntentId
 
+### Recipe Costing Models (Planning Tools)
+
+#### Ingredient
+- id, name, unitCost, unit, isFromGarden, category, notes
+- Categories: **Garden** (homegrown, $0), **Pantry** (purchased), **Packaging** (containers)
+
+#### CogsRecipe
+- id, name, description, containerType, containerCost, labelCost, energyCost, retailPrice, notes
+- Has many **CogsRecipeIngredient** (junction table with quantity)
+
+#### CogsRecipeIngredient
+- id, recipeId, ingredientId, quantity
+- Links recipes to ingredients with amounts
+
 ---
 
 ## Frontend Pages
@@ -87,7 +117,11 @@ This document outlines the simplified fullstack architecture for 4050, focused o
 
 ### Admin Pages
 - `/admin/login` - Admin login (Google OAuth)
-- `/admin` - Dashboard (Orders, Products, Impact Tracker)
+- `/admin` - Dashboard with tabs:
+  - **Orders** - Order fulfillment with packing slips & address labels
+  - **Products** - Product catalog management
+  - **Recipe Costing** - Cost calculator for planning new products
+- `/admin/dev` - Development testing (localhost only, no auth required)
 
 ---
 

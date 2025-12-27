@@ -30,6 +30,7 @@ model Product {
   description String   @db.Text
   price       Int      // Price in cents (e.g., 999 = $9.99)
   imageUrl    String
+  category    String?  // Product category for filtering
   isAvailable Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -37,6 +38,7 @@ model Product {
   orderItems OrderItem[]
 
   @@index([isAvailable])
+  @@index([category])
   @@map("products")
 }
 
@@ -70,6 +72,10 @@ model Order {
   paymentStatus         PaymentStatus     @default(PENDING)
   fulfillmentStatus     FulfillmentStatus @default(PENDING)
   stripePaymentIntentId String?           @unique
+  // Seeds of Kindness - customer's chosen cause and contribution
+  proceedsChoice        String?           // Which cause they selected
+  seedCount             Int?              // Number of "seeds" sown (calculated from order)
+  extraSupportAmount    Int?              // Additional donation in cents
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
@@ -95,4 +101,60 @@ model OrderItem {
 
   @@index([orderId])
   @@map("order_items")
+}
+
+// ============================================
+// COGS Calculator Models (Planning Tools)
+// ============================================
+
+// Master ingredient library with unit costs
+model Ingredient {
+  id           String   @id @default(uuid())
+  name         String
+  unitCost     Float    // Cost per unit (e.g., $0.60 per lb)
+  unit         String   // "lb", "oz", "each", "qt", "cup", etc.
+  isFromGarden Boolean  @default(false) // Garden items = $0 cost
+  category     String?  // "Garden", "Pantry", "Packaging"
+  notes        String?  // Optional notes
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  recipeIngredients CogsRecipeIngredient[]
+
+  @@index([name])
+  @@index([category])
+  @@map("ingredients")
+}
+
+// Recipe/Product cost breakdown
+model CogsRecipe {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  containerType String   // "quart jar", "pint jar", "8oz jar", "4oz bag", etc.
+  containerCost Float    @default(0) // Cost of jar/container + lid
+  labelCost     Float    @default(0.20) // Cost of label
+  energyCost    Float    @default(0.30) // Energy/water overhead per unit
+  retailPrice   Float    // Suggested retail price
+  notes         String?  // Optional notes about the recipe
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ingredients CogsRecipeIngredient[]
+
+  @@map("cogs_recipes")
+}
+
+// Junction table for recipe ingredients
+model CogsRecipeIngredient {
+  id           String @id @default(uuid())
+  recipeId     String
+  ingredientId String
+  quantity     Float  // Amount of ingredient used
+  
+  recipe     CogsRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, ingredientId])
+  @@map("cogs_recipe_ingredients")
 }

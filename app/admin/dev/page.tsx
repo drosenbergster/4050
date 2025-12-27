@@ -10,12 +10,13 @@ import { useEffect, useState } from 'react';
 import { formatPrice } from '@/lib/format';
 import { Package, ShoppingBag, Coins, Leaf, CheckCircle, Clock, Truck, Home, Filter } from 'lucide-react';
 import ProductList from '../components/product-list';
+import CogsCalculator from '../components/cogs-calculator';
 import { CURRENT_CAUSES } from '@/lib/causes';
 import OrderDetailModal from '../components/order-detail-modal';
 import { FulfillmentStatus, OrderWithItems } from '@/lib/types';
 
 export default function DevAdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'orders' | 'products'>('products');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'cogs'>('products');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
@@ -139,6 +140,16 @@ export default function DevAdminDashboard() {
             >
               <Package size={18} />
               Products
+            </button>
+            <button
+              onClick={() => setActiveTab('cogs')}
+              className={`${activeTab === 'cogs'
+                  ? 'border-[#2C3E50] text-[#2C3E50]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            >
+              <Coins size={18} />
+              Recipe Costing
             </button>
           </nav>
         </div>
@@ -314,8 +325,10 @@ export default function DevAdminDashboard() {
               </div>
             </details>
           </div>
-        ) : (
+        ) : activeTab === 'products' ? (
           <ProductList />
+        ) : (
+          <CogsCalculator />
         )}
       </main>
 
