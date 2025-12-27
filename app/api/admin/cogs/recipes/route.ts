@@ -29,6 +29,13 @@ export async function GET() {
           include: {
             ingredient: true
           }
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            isAvailable: true
+          }
         }
       },
       orderBy: { name: 'asc' }

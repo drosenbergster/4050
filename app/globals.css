@@ -74,3 +74,47 @@ h1, h2, h3, h4, h5, h6 {
 .card-shadow {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
+
+/* Print Styles for Seasonal Planner */
+@media print {
+  /* Hide non-essential elements */
+  nav, header, footer, .no-print {
+    display: none !important;
+  }
+  
+  /* Show print-only elements */
+  .print-only {
+    display: block !important;
+  }
+  
+  /* Reset backgrounds for printing */
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Ensure timeline bars print with color */
+  [class*="bg-amber"], [class*="bg-green"], [class*="bg-red"],
+  [class*="bg-blue"], [class*="bg-purple"], [class*="bg-pink"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Inline style backgrounds */
+  [style*="background-color"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Page setup */
+  @page {
+    size: landscape;
+    margin: 0.5in;
+  }
+  
+  /* Typography adjustments */
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+}

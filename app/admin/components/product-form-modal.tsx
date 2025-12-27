@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Product } from '@/lib/types';
-import { X, Loader2, ImageIcon } from 'lucide-react';
+import { X, Loader2, ImageIcon, Settings, Trash2, Pencil } from 'lucide-react';
 
-const CATEGORIES = [
-    { value: 'Applesauce', label: '🍎 Applesauce' },
-    { value: 'Jams', label: '🫐 Jams' },
-    { value: 'Spreads', label: '🥜 Spreads' },
-    { value: 'Dried Goods', label: '🍂 Dried Goods' },
-    { value: 'Pickled Goods', label: '🥒 Pickled Goods' },
+const DEFAULT_CATEGORIES = [
+    'Applesauces',
+    'Jams',
+    'Spreads',
+    'Dried Goods',
+    'Pickled Goods',
 ];
 
 interface ProductFormModalProps {
@@ -17,6 +17,8 @@ interface ProductFormModalProps {
     onClose: () => void;
     product: (Product & { category?: string }) | null;
     onSuccess: (message: string) => void;
+    customCategories?: string[];
+    onCategoriesChange?: (categories: string[]) => void;
 }
 
 export default function ProductFormModal({
@@ -24,6 +26,8 @@ export default function ProductFormModal({
     onClose,
     product,
     onSuccess,
+    customCategories = [],
+    onCategoriesChange,
 }: ProductFormModalProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -36,8 +40,16 @@ export default function ProductFormModal({
     const [category, setCategory] = useState('');
     const [isAvailable, setIsAvailable] = useState(true);
     const [imageError, setImageError] = useState(false);
+    
+    // Category management
+    const [showCategoryManager, setShowCategoryManager] = useState(false);
+    const [editingCategory, setEditingCategory] = useState<string | null>(null);
+    const [editCategoryValue, setEditCategoryValue] = useState('');
 
     const isEditing = !!product;
+    
+    // All categories (default + custom)
+    const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...customCategories])].sort();
 
     // Reset form when modal opens/closes or product changes
     useEffect(() => {
@@ -235,18 +247,28 @@ export default function ProductFormModal({
 
                             {/* Category */}
                             <div>
-                                <label className="block text-sm font-bold text-[#5C4A3D] mb-2">
-                                    Category
-                                </label>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-bold text-[#5C4A3D]">
+                                        Category
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCategoryManager(true)}
+                                        className="text-xs text-[#4A7C59] hover:text-[#3D6649] flex items-center gap-1"
+                                    >
+                                        <Settings size={12} />
+                                        Manage
+                                    </button>
+                                </div>
                                 <select
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value)}
                                     className="w-full px-4 py-3 bg-white border border-[#E5DDD3] rounded-xl focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent text-[#5C4A3D] appearance-none cursor-pointer"
                                 >
                                     <option value="">Choose one...</option>
-                                    {CATEGORIES.map((cat) => (
-                                        <option key={cat.value} value={cat.value}>
-                                            {cat.label}
+                                    {allCategories.map((cat) => (
+                                        <option key={cat} value={cat}>
+                                            {cat}
                                         </option>
                                     ))}
                                 </select>
@@ -319,6 +341,117 @@ export default function ProductFormModal({
                     </form>
                 </div>
             </div>
+
+            {/* Category Manager Modal */}
+            {showCategoryManager && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/30">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="bg-[#F9F6F2] px-6 py-4 border-b border-[#E5DDD3] flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-[#5C4A3D]">Manage Categories</h3>
+                            <button
+                                onClick={() => {
+                                    setShowCategoryManager(false);
+                                    setEditingCategory(null);
+                                }}
+                                className="text-[#8B7355] hover:text-[#5C4A3D] transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 max-h-80 overflow-y-auto">
+                            <div className="space-y-2">
+                                {allCategories.map((cat) => (
+                                    <div
+                                        key={cat}
+                                        className="flex items-center justify-between p-3 bg-[#F9F6F2] rounded-lg"
+                                    >
+                                        {editingCategory === cat ? (
+                                            <input
+                                                type="text"
+                                                value={editCategoryValue}
+                                                onChange={(e) => setEditCategoryValue(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        if (editCategoryValue.trim() && onCategoriesChange) {
+                                                            const newCats = customCategories.filter(c => c !== cat);
+                                                            newCats.push(editCategoryValue.trim());
+                                                            onCategoriesChange(newCats);
+                                                            if (category === cat) {
+                                                                setCategory(editCategoryValue.trim());
+                                                            }
+                                                        }
+                                                        setEditingCategory(null);
+                                                    }
+                                                    if (e.key === 'Escape') {
+                                                        setEditingCategory(null);
+                                                    }
+                                                }}
+                                                onBlur={() => setEditingCategory(null)}
+                                                autoFocus
+                                                className="flex-1 px-2 py-1 text-sm border border-[#4A7C59] rounded focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/30"
+                                            />
+                                        ) : (
+                                            <span className="text-sm text-[#5C4A3D]">{cat}</span>
+                                        )}
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => {
+                                                    setEditingCategory(cat);
+                                                    setEditCategoryValue(cat);
+                                                }}
+                                                className="p-1.5 text-[#4A7C59] hover:bg-[#E8F0EA] rounded transition-colors"
+                                                title="Edit category"
+                                            >
+                                                <Pencil size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm(`Delete category "${cat}"?`)) {
+                                                        if (onCategoriesChange) {
+                                                            onCategoriesChange(customCategories.filter(c => c !== cat));
+                                                        }
+                                                        if (category === cat) {
+                                                            setCategory('');
+                                                        }
+                                                    }
+                                                }}
+                                                className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                                                title="Delete category"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const newCat = prompt('Enter new category name:');
+                                    if (newCat && newCat.trim() && onCategoriesChange) {
+                                        if (!allCategories.includes(newCat.trim())) {
+                                            onCategoriesChange([...customCategories, newCat.trim()]);
+                                        }
+                                    }
+                                }}
+                                className="mt-4 w-full py-2 text-sm text-[#4A7C59] border border-dashed border-[#4A7C59] rounded-lg hover:bg-[#E8F0EA] transition-colors"
+                            >
+                                + Add New Category
+                            </button>
+                        </div>
+                        <div className="px-6 py-4 border-t border-[#E5DDD3]">
+                            <button
+                                onClick={() => {
+                                    setShowCategoryManager(false);
+                                    setEditingCategory(null);
+                                }}
+                                className="w-full py-2 bg-[#4A7C59] text-white rounded-xl hover:bg-[#3D6649] transition-colors font-medium"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

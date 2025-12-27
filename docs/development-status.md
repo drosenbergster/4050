@@ -47,13 +47,39 @@
   - **Database Persistence**: All changes saved to PostgreSQL via Prisma
   - **API Routes**: Complete REST API for ingredients and recipes
   - **UX Polish**: Friendly copy, "You Earn" instead of "Profit", mom-friendly interface
+- [x] **Seasonal Planner Feature (Dec 27, 2025)**: 🌱📅
+  - **New Admin Tab**: "Seasonal Planner" for production calendar and task management.
+  - **Crop Calendar**: Visual year timeline showing:
+    - Seed start (indoors), transplant, direct sow phases
+    - Harvest windows with peak season highlighting
+    - Brand-aligned color palette with consistent phase colors
+    - Urgency-based sorting (upcoming activities first)
+  - **12 Portland OR Crops** pre-seeded (Zone 8b):
+    - Apples, Tomatoes, Cucumbers, Green Beans, Peppers
+    - Blueberries, Raspberries, Plums, Peas, Basil, Parsley, Sorrel
+  - **Add/Edit Crops**: Modal with quick-add presets and month-based pickers
+  - **Crop Detail Panel**: Shows full lifecycle, planting notes, linked recipes
+  - **Seasonal Tasks**: Monthly checklist with year-over-year archiving
+  - **Print Feature**: Print-friendly views of calendar and task list
+  - **Full API**: CRUD endpoints for crops and tasks
+- [x] **Category Management (Dec 27, 2025)**: 📂
+  - **Product Categories**: Applesauces, Jams, Spreads, Dried Goods, Pickled Goods
+  - **Manage Categories Modal**: 
+    - View all categories with product counts
+    - Expandable to show products under each category
+    - Edit/delete any category (including defaults)
+    - Add new categories
+  - **Inline Editing**: Click product description or price to edit in-place
+  - **Clean Product Table**: Icon-only actions, category dropdown under name
 
 ## Pending / Blocked
 - [ ] **Stripe Live Mode**: Awaiting live API keys for production testing.
+- [ ] **COGS → Product Publishing**: "Publish to Store" flow from recipes (story 3.1 scope)
+- [ ] **Price Sync Prompts**: Alert when recipe price changes for linked products
 
 ## Next Steps
-1. **End-to-End Visual Polish**: Final pass on typography and spacing for mobile checkout.
-2. **Order Confirmation Emails**: Discuss and implement simple transactional emails.
+1. **Complete Story 3.1**: Implement "Publish to Store" flow from Recipe Costing tab.
+2. **End-to-End Visual Polish**: Final pass on typography and spacing for mobile checkout.
 3. **Product Content Pass**: Refine heritage descriptions for the current harvest.
 
 ## Known Issues

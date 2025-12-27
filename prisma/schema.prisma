@@ -35,6 +35,10 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Link to COGS recipe (for profit tracking)
+  cogsRecipeId String?     @unique
+  cogsRecipe   CogsRecipe? @relation(fields: [cogsRecipeId], references: [id], onDelete: SetNull)
+
   orderItems OrderItem[]
 
   @@index([isAvailable])
@@ -120,6 +124,7 @@ model Ingredient {
   updatedAt    DateTime @updatedAt
 
   recipeIngredients CogsRecipeIngredient[]
+  crops             Crop[]
 
   @@index([name])
   @@index([category])
@@ -141,6 +146,7 @@ model CogsRecipe {
   updatedAt     DateTime @updatedAt
 
   ingredients CogsRecipeIngredient[]
+  product     Product? // Linked store product (if published)
 
   @@map("cogs_recipes")
 }
@@ -157,4 +163,67 @@ model CogsRecipeIngredient {
 
   @@unique([recipeId, ingredientId])
   @@map("cogs_recipe_ingredients")
+}
+
+// ============================================
+// Seasonal Planner Models
+// ============================================
+
+enum CropType {
+  ANNUAL
+  PERENNIAL
+  BIENNIAL
+}
+
+// Garden crops with growing cycle data (Portland, OR Zone 8b)
+model Crop {
+  id              String   @id @default(uuid())
+  name            String
+  type            CropType @default(ANNUAL)
+  
+  // Planting Phase (for annuals/biennials)
+  seedStartWeek   Int?     // Week to start indoors (null = direct sow or perennial)
+  seedStartNotes  String?  // e.g., "8 weeks before last frost"
+  plantOutWeekStart Int?   // First week to plant/transplant outdoors
+  plantOutWeekEnd   Int?   // Last week to plant outdoors
+  directSow       Boolean  @default(false) // true = don't start indoors
+  
+  // Harvest Phase
+  harvestStart    Int      // Week of year (1-52)
+  harvestEnd      Int      // Week of year (1-52)
+  peakStart       Int?     // Optional peak period start
+  peakEnd         Int?     // Optional peak period end
+  
+  // Display
+  color           String   @default("#4A7C59")
+  notes           String?
+  
+  // Link to COGS ingredient
+  ingredientId    String?
+  ingredient      Ingredient? @relation(fields: [ingredientId], references: [id], onDelete: SetNull)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([harvestStart])
+  @@map("crops")
+}
+
+// Seasonal production tasks/checklist
+model SeasonalTask {
+  id          String    @id @default(uuid())
+  title       String
+  month       Int       // 1-12
+  weekOfMonth Int?      // Optional: 1-4 for specific week
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  year        Int       // Year this task/completion applies to
+  notes       String?
+  sortOrder   Int       @default(0) // For ordering within a month
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([year, month])
+  @@index([isCompleted])
+  @@map("seasonal_tasks")
 }

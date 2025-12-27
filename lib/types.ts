@@ -139,3 +139,53 @@ export interface RecipeCostBreakdown {
   marginPercent: number;
 }
 
+// ============================================
+// Seasonal Planner Types
+// ============================================
+
+export type CropType = 'ANNUAL' | 'PERENNIAL' | 'BIENNIAL';
+
+export interface Crop {
+  id: string;
+  name: string;
+  type: CropType;
+  
+  // Planting Phase (for annuals/biennials)
+  seedStartWeek: number | null;
+  seedStartNotes: string | null;
+  plantOutWeekStart: number | null;
+  plantOutWeekEnd: number | null;
+  directSow: boolean;
+  
+  // Harvest Phase
+  harvestStart: number;
+  harvestEnd: number;
+  peakStart: number | null;
+  peakEnd: number | null;
+  
+  // Display
+  color: string;
+  notes: string | null;
+  
+  // Relations
+  ingredientId: string | null;
+  ingredient?: Ingredient | null;
+  
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SeasonalTask {
+  id: string;
+  title: string;
+  month: number; // 1-12
+  weekOfMonth: number | null; // 1-4 or null
+  isCompleted: boolean;
+  completedAt: Date | null;
+  year: number;
+  notes: string | null;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+

@@ -14,7 +14,11 @@ import {
   Percent,
   X,
   Save,
-  Sparkles
+  Sparkles,
+  ShoppingBag,
+  Check,
+  ExternalLink,
+  ImagePlus
 } from 'lucide-react';
 
 // Types
@@ -46,6 +50,11 @@ interface Recipe {
   retailPrice: number;
   notes: string | null;
   ingredients: RecipeIngredient[];
+  product?: {
+    id: string;
+    name: string;
+    isAvailable: boolean;
+  } | null;
 }
 
 // Calculate costs for a recipe
@@ -87,6 +96,7 @@ export default function CogsCalculator() {
   const [editingIngredient, setEditingIngredient] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ unitCost: number; unit: string }>({ unitCost: 0, unit: '' });
   const [isAddingIngredient, setIsAddingIngredient] = useState(false);
+  const [publishingRecipe, setPublishingRecipe] = useState<Recipe | null>(null);
 
   // Fetch data on mount
   useEffect(() => {
@@ -520,21 +530,42 @@ export default function CogsCalculator() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-[#E5DDD3]">
-                      <button
-                        onClick={() => setEditingRecipe(recipe)}
-                        className="px-3 py-1.5 text-sm text-[#5C4A3D] hover:bg-white rounded-lg transition-colors flex items-center gap-1"
-                      >
-                        <Edit3 size={14} />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteRecipe(recipe.id)}
-                        className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
-                      >
-                        <Trash2 size={14} />
-                        Delete
-                      </button>
+                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-[#E5DDD3]">
+                      <div>
+                        {recipe.product ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm font-medium">
+                            <Check size={14} />
+                            Published: {recipe.product.name}
+                            {!recipe.product.isAvailable && (
+                              <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded ml-1">Hidden</span>
+                            )}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setPublishingRecipe(recipe)}
+                            className="px-3 py-1.5 text-sm bg-[#4A7C59] text-white hover:bg-[#3d6649] rounded-lg transition-colors flex items-center gap-1.5 font-medium"
+                          >
+                            <ShoppingBag size={14} />
+                            Publish to Store
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setEditingRecipe(recipe)}
+                          className="px-3 py-1.5 text-sm text-[#5C4A3D] hover:bg-white rounded-lg transition-colors flex items-center gap-1"
+                        >
+                          <Edit3 size={14} />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRecipe(recipe.id)}
+                          className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
+                        >
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -588,6 +619,18 @@ export default function CogsCalculator() {
         <AddIngredientModal
           onClose={() => setIsAddingIngredient(false)}
           onSave={handleAddIngredient}
+        />
+      )}
+
+      {/* Publish to Store Modal */}
+      {publishingRecipe && (
+        <PublishToStoreModal
+          recipe={publishingRecipe}
+          onClose={() => setPublishingRecipe(null)}
+          onPublish={async () => {
+            await fetchData();
+            setPublishingRecipe(null);
+          }}
         />
       )}
     </div>
@@ -1089,6 +1132,242 @@ function AddIngredientModal({ onClose, onSave }: AddIngredientModalProps) {
             >
               <Plus size={18} />
               Add Ingredient
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Publish to Store Modal
+interface PublishToStoreModalProps {
+  recipe: Recipe;
+  onClose: () => void;
+  onPublish: () => void;
+}
+
+function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModalProps) {
+  const [name, setName] = useState(recipe.name);
+  const [description, setDescription] = useState(recipe.description || `Handcrafted ${recipe.name} made with care.`);
+  const [price, setPrice] = useState(recipe.retailPrice);
+  const [imageUrl, setImageUrl] = useState('');
+  const [category, setCategory] = useState('');
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const costs = calculateRecipeCosts(recipe);
+  const estimatedProfit = price - costs.totalCost;
+  const estimatedMargin = price > 0 ? (estimatedProfit / price) * 100 : 0;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/admin/products/from-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipeId: recipe.id,
+          name,
+          description,
+          price, // Will be converted to cents by API
+          imageUrl,
+          category: category || null,
+          isAvailable,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to publish product');
+      }
+
+      onPublish();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to publish product');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const categories = ['Applesauces', 'Spreads', 'Dried Goods', 'Jams', 'Pickled Goods', 'Other'];
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-[#E5DDD3] p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-[#E8F0EA] rounded-lg text-[#4A7C59]">
+              <ShoppingBag size={20} />
+            </div>
+            <div>
+              <h3 className="font-serif font-bold text-lg text-[#5C4A3D]">Publish to Store</h3>
+              <p className="text-xs text-gray-500">Create a product from: {recipe.name}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {/* Cost Summary */}
+          <div className="bg-[#FDF8F3] rounded-xl p-4 space-y-2">
+            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Cost Analysis</h4>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Production Cost</span>
+              <span className="font-medium">{formatCurrency(costs.totalCost)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Retail Price</span>
+              <span className="font-bold text-[#4A7C59]">{formatCurrency(price)}</span>
+            </div>
+            <div className="flex justify-between text-sm border-t border-[#E5DDD3] pt-2">
+              <span className="text-gray-600">Estimated Profit</span>
+              <span className={`font-bold ${estimatedProfit > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatCurrency(estimatedProfit)} ({estimatedMargin.toFixed(0)}%)
+              </span>
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* Product Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/20 focus:border-[#4A7C59]"
+              placeholder="e.g., Heritage Apple Cinnamon Butter"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              required
+              rows={3}
+              className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/20 focus:border-[#4A7C59] resize-none"
+              placeholder="Describe your product..."
+            />
+          </div>
+
+          {/* Price */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+            <div className="relative">
+              <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={price}
+                onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
+                required
+                className="w-full pl-7 pr-3 py-2 border border-[#E5DDD3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/20 focus:border-[#4A7C59]"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Suggested based on recipe retail price. Synced initially, can be adjusted independently later.
+            </p>
+          </div>
+
+          {/* Image URL */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Image URL <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/20 focus:border-[#4A7C59]"
+                placeholder="https://..."
+              />
+              <ImagePlus size={18} className="absolute right-3 top-2.5 text-gray-400" />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Upload your image to a service like Unsplash or Cloudinary and paste the URL.
+            </p>
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/20 focus:border-[#4A7C59]"
+            >
+              <option value="">Select a category...</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Visibility Toggle */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsAvailable(!isAvailable)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                isAvailable ? 'bg-[#4A7C59]' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  isAvailable ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className="text-sm text-gray-700">
+              {isAvailable ? 'Visible in store' : 'Hidden (draft mode)'}
+            </span>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#E5DDD3]">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || !name.trim() || !imageUrl.trim()}
+              className="px-6 py-2 bg-[#4A7C59] text-white rounded-lg hover:bg-[#3d6549] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  <ShoppingBag size={18} />
+                  Publish Product
+                </>
+              )}
             </button>
           </div>
         </form>
