@@ -34,7 +34,7 @@ export default function DevAdminDashboard() {
   const pendingOrders = orders.filter(o => o.fulfillmentStatus === 'PENDING');
   const pendingCount = pendingOrders.length;
   const shippingPending = pendingOrders.filter(o => o.fulfillmentMethod === 'SHIPPING').length;
-  const pickupPending = pendingOrders.filter(o => o.fulfillmentMethod === 'LOCAL_PICKUP').length;
+  const pickupPending = pendingOrders.filter(o => o.fulfillmentMethod === 'PICKUP').length;
   
   // Filtered orders
   const displayedOrders = showPendingOnly ? pendingOrders : orders;
