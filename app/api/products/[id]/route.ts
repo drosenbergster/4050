@@ -19,7 +19,8 @@ export async function PUT(
     try {
         const { id } = await params;
         const body = await request.json();
-        const { name, description, price, imageUrl, category, isAvailable } = body;
+        const { name, description, price, imageUrl, isAvailable } = body;
+        // Note: category field not in database schema yet
 
         const product = await prisma.product.update({
             where: { id },
@@ -28,7 +29,6 @@ export async function PUT(
                 description,
                 price,
                 imageUrl,
-                category,
                 isAvailable,
             },
         });
