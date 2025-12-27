@@ -65,28 +65,29 @@ export default function HomemadeCard({ product }: ProductCardProps) {
           {product.description}
         </p>
 
-        {/* Action Area - Minimalist Plus Sign */}
+        {/* Action Area - Clear Add to Basket Button */}
         <div className="flex items-center justify-end">
           <button
             onClick={handleAddToBasket}
             disabled={!product.isAvailable || isAdding}
-            className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 touch-manipulation ${
+            className={`relative flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300 active:scale-95 touch-manipulation font-medium text-sm ${
               isAdding 
-                ? 'bg-[#4A7C59] text-white rotate-90 scale-110' 
-                : 'bg-transparent text-[#5C4A3D] sm:hover:bg-[#5C4A3D] sm:hover:text-white border border-[#5C4A3D]'
-            } disabled:opacity-20 disabled:cursor-not-allowed`}
+                ? 'bg-[#4A7C59] text-white' 
+                : 'bg-[#5C4A3D] text-white hover:bg-[#4A7C59]'
+            } disabled:opacity-30 disabled:cursor-not-allowed`}
             aria-label="Add to basket"
           >
             {isAdding ? (
-              <Check size={20} strokeWidth={2.5} />
+              <>
+                <Check size={16} strokeWidth={2.5} />
+                <span>Added!</span>
+              </>
             ) : (
-              <Plus size={20} strokeWidth={1.5} />
+              <>
+                <Plus size={16} strokeWidth={2} />
+                <span>Add to Basket</span>
+              </>
             )}
-            
-            {/* Tooltip for context */}
-            <span className={`absolute -top-10 right-0 bg-[#5C4A3D] text-white text-[10px] px-2 py-1 rounded whitespace-nowrap transition-opacity duration-300 pointer-events-none ${isAdding ? 'opacity-100' : 'opacity-0'}`}>
-              Added to Basket
-            </span>
           </button>
         </div>
       </div>
