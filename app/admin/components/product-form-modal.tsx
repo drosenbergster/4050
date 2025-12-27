@@ -15,7 +15,7 @@ const DEFAULT_CATEGORIES = [
 interface ProductFormModalProps {
     isOpen: boolean;
     onClose: () => void;
-    product: (Product & { category?: string }) | null;
+    product: Product | null;
     onSuccess: (message: string) => void;
     customCategories?: string[];
     onCategoriesChange?: (categories: string[]) => void;

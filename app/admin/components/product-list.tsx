@@ -16,7 +16,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export default function ProductList() {
-    const [products, setProducts] = useState<(Product & { category?: string })[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export default function ProductList() {
 
     // Modal states
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [editingProduct, setEditingProduct] = useState<(Product & { category?: string }) | null>(null);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -76,7 +76,7 @@ export default function ProductList() {
         setIsFormOpen(true);
     };
 
-    const handleEditClick = (product: Product & { category?: string }) => {
+    const handleEditClick = (product: Product) => {
         setEditingProduct(product);
         setIsFormOpen(true);
     };
@@ -86,7 +86,7 @@ export default function ProductList() {
     };
 
     // Quick toggle for availability
-    const handleToggleAvailability = async (product: Product & { category?: string }) => {
+    const handleToggleAvailability = async (product: Product) => {
         setTogglingId(product.id);
         try {
             const res = await fetch(`/api/products/${product.id}`, {
@@ -113,7 +113,7 @@ export default function ProductList() {
     };
 
     // Quick category change
-    const handleCategoryChange = async (product: Product & { category?: string }, newCategory: string) => {
+    const handleCategoryChange = async (product: Product, newCategory: string) => {
         try {
             const res = await fetch(`/api/products/${product.id}`, {
                 method: 'PUT',
@@ -137,12 +137,12 @@ export default function ProductList() {
     };
 
     // Inline description edit
-    const startEditingDescription = (product: Product & { category?: string }) => {
+    const startEditingDescription = (product: Product) => {
         setEditingDescriptionId(product.id);
         setTempDescription(product.description || '');
     };
 
-    const saveDescription = async (product: Product & { category?: string }) => {
+    const saveDescription = async (product: Product) => {
         try {
             const res = await fetch(`/api/products/${product.id}`, {
                 method: 'PUT',
@@ -167,12 +167,12 @@ export default function ProductList() {
     };
 
     // Inline price edit
-    const startEditingPrice = (product: Product & { category?: string }) => {
+    const startEditingPrice = (product: Product) => {
         setEditingPriceId(product.id);
         setTempPrice((product.price / 100).toFixed(2));
     };
 
-    const savePrice = async (product: Product & { category?: string }) => {
+    const savePrice = async (product: Product) => {
         const priceInCents = Math.round(parseFloat(tempPrice) * 100);
         if (isNaN(priceInCents) || priceInCents < 0) {
             showSuccess('Invalid price');
