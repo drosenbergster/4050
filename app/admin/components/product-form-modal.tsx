@@ -2,9 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { Product } from '@/lib/types';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, ImageIcon } from 'lucide-react';
 
-const CATEGORIES = ['Applesauce', 'Jams', 'Spreads', 'Dried Goods', 'Pickled'];
+const CATEGORIES = [
+    { value: 'Applesauce', label: '🍎 Applesauce' },
+    { value: 'Jams', label: '🫐 Jams' },
+    { value: 'Spreads', label: '🥜 Spreads' },
+    { value: 'Dried Goods', label: '🍂 Dried Goods' },
+    { value: 'Pickled Goods', label: '🥒 Pickled Goods' },
+];
 
 interface ProductFormModalProps {
     isOpen: boolean;
@@ -29,6 +35,7 @@ export default function ProductFormModal({
     const [imageUrl, setImageUrl] = useState('');
     const [category, setCategory] = useState('');
     const [isAvailable, setIsAvailable] = useState(true);
+    const [imageError, setImageError] = useState(false);
 
     const isEditing = !!product;
 
@@ -42,6 +49,7 @@ export default function ProductFormModal({
             setCategory(product.category || '');
             setIsAvailable(product.isAvailable);
             setError(null);
+            setImageError(false);
         } else if (isOpen) {
             // Reset for new product
             setName('');
@@ -51,6 +59,7 @@ export default function ProductFormModal({
             setCategory('');
             setIsAvailable(true);
             setError(null);
+            setImageError(false);
         }
     }, [isOpen, product]);
 
@@ -60,20 +69,20 @@ export default function ProductFormModal({
 
         // Validation
         if (!name.trim()) {
-            setError('Name is required');
+            setError('Please enter a product name');
             return;
         }
         if (!description.trim()) {
-            setError('Description is required');
+            setError('Please enter a description');
             return;
         }
         const priceNum = parseFloat(priceDisplay);
         if (isNaN(priceNum) || priceNum <= 0) {
-            setError('Price must be a positive number');
+            setError('Please enter a valid price');
             return;
         }
         if (!imageUrl.trim()) {
-            setError('Image URL is required');
+            setError('Please enter an image URL');
             return;
         }
 
@@ -105,7 +114,7 @@ export default function ProductFormModal({
                 throw new Error(data.error || 'Failed to save product');
             }
 
-            onSuccess(isEditing ? 'Product updated successfully' : 'Product created successfully');
+            onSuccess(isEditing ? 'Product updated!' : 'Product added!');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to save product');
         } finally {
@@ -125,136 +134,185 @@ export default function ProductFormModal({
 
             {/* Modal */}
             <div className="flex min-h-full items-center justify-center p-4">
-                <div className="relative bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-semibold text-gray-900">
-                            {isEditing ? 'Edit Product' : 'Add Product'}
-                        </h2>
-                        <button
-                            onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600"
-                        >
-                            <X size={24} />
-                        </button>
+                <div className="relative bg-[#FDF8F3] rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-[#E5DDD3]">
+                    {/* Header with Image Preview */}
+                    <div className="bg-white border-b border-[#E5DDD3] p-6">
+                        <div className="flex items-start gap-4">
+                            {/* Image Preview */}
+                            <div className="flex-shrink-0">
+                                {imageUrl && !imageError ? (
+                                    <img
+                                        src={imageUrl}
+                                        alt="Product preview"
+                                        className="w-20 h-20 rounded-xl object-cover border-2 border-[#E5DDD3]"
+                                        onError={() => setImageError(true)}
+                                    />
+                                ) : (
+                                    <div className="w-20 h-20 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center">
+                                        <ImageIcon size={24} className="text-gray-400" />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl font-serif font-bold text-[#5C4A3D]">
+                                        {isEditing ? 'Edit Product' : 'Add New Product'}
+                                    </h2>
+                                    <button
+                                        onClick={onClose}
+                                        className="text-gray-400 hover:text-[#5C4A3D] transition-colors"
+                                    >
+                                        <X size={24} />
+                                    </button>
+                                </div>
+                                {isEditing && (
+                                    <p className="text-sm text-[#8B7355] mt-1">
+                                        Editing: <span className="font-medium">{product?.name}</span>
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Error */}
                     {error && (
-                        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+                        <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm">
                             {error}
                         </div>
                     )}
 
                     {/* Form */}
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Name */}
+                    <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                        {/* Product Name */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Name *
+                            <label className="block text-sm font-bold text-[#5C4A3D] mb-2">
+                                Product Name
                             </label>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent"
-                                placeholder="Apple Butter"
+                                className="w-full px-4 py-3 bg-white border border-[#E5DDD3] rounded-xl focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent text-[#5C4A3D] placeholder-gray-400"
+                                placeholder="e.g., Apple Butter"
                             />
                         </div>
 
                         {/* Description */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Description *
+                            <label className="block text-sm font-bold text-[#5C4A3D] mb-2">
+                                Description
                             </label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 rows={3}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent"
-                                placeholder="Smooth, sweet apple butter made from heritage apples..."
+                                className="w-full px-4 py-3 bg-white border border-[#E5DDD3] rounded-xl focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent text-[#5C4A3D] placeholder-gray-400 resize-none"
+                                placeholder="Tell the story of this product..."
                             />
+                            <p className="text-xs text-[#8B7355] mt-1 italic">
+                                This shows on the shop page
+                            </p>
                         </div>
 
-                        {/* Price */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Price (USD) *
-                            </label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-2 text-gray-500">$</span>
-                                <input
-                                    type="text"
-                                    value={priceDisplay}
-                                    onChange={(e) => setPriceDisplay(e.target.value)}
-                                    className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent"
-                                    placeholder="9.99"
-                                />
+                        {/* Price and Category Row */}
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Price */}
+                            <div>
+                                <label className="block text-sm font-bold text-[#5C4A3D] mb-2">
+                                    Price
+                                </label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-3 text-[#8B7355] font-medium">$</span>
+                                    <input
+                                        type="text"
+                                        value={priceDisplay}
+                                        onChange={(e) => setPriceDisplay(e.target.value)}
+                                        className="w-full pl-8 pr-4 py-3 bg-white border border-[#E5DDD3] rounded-xl focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent text-[#5C4A3D] placeholder-gray-400"
+                                        placeholder="10.99"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Category */}
+                            <div>
+                                <label className="block text-sm font-bold text-[#5C4A3D] mb-2">
+                                    Category
+                                </label>
+                                <select
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                    className="w-full px-4 py-3 bg-white border border-[#E5DDD3] rounded-xl focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent text-[#5C4A3D] appearance-none cursor-pointer"
+                                >
+                                    <option value="">Choose one...</option>
+                                    {CATEGORIES.map((cat) => (
+                                        <option key={cat.value} value={cat.value}>
+                                            {cat.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 
                         {/* Image URL */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Image URL *
+                            <label className="block text-sm font-bold text-[#5C4A3D] mb-2">
+                                Image URL
                             </label>
                             <input
                                 type="url"
                                 value={imageUrl}
-                                onChange={(e) => setImageUrl(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent"
-                                placeholder="https://example.com/image.jpg"
+                                onChange={(e) => {
+                                    setImageUrl(e.target.value);
+                                    setImageError(false);
+                                }}
+                                className="w-full px-4 py-3 bg-white border border-[#E5DDD3] rounded-xl focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent text-[#5C4A3D] placeholder-gray-400 text-sm"
+                                placeholder="https://..."
                             />
+                            <p className="text-xs text-[#8B7355] mt-1 italic">
+                                Paste a link to your product image
+                            </p>
                         </div>
 
-                        {/* Category */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Category
-                            </label>
-                            <select
-                                value={category}
-                                onChange={(e) => setCategory(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent"
-                            >
-                                <option value="">Select category...</option>
-                                {CATEGORIES.map((cat) => (
-                                    <option key={cat} value={cat}>
-                                        {cat}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Availability Toggle */}
-                        <div className="flex items-center">
-                            <input
-                                type="checkbox"
-                                id="isAvailable"
-                                checked={isAvailable}
-                                onChange={(e) => setIsAvailable(e.target.checked)}
-                                className="h-4 w-4 text-[#4A7C59] border-gray-300 rounded focus:ring-[#4A7C59]"
-                            />
-                            <label htmlFor="isAvailable" className="ml-2 text-sm text-gray-700">
-                                Available for purchase
-                            </label>
+                        {/* Show in Shop Toggle */}
+                        <div className="bg-white border border-[#E5DDD3] rounded-xl p-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-bold text-[#5C4A3D]">Show in Shop</p>
+                                    <p className="text-xs text-[#8B7355]">
+                                        {isAvailable ? 'Customers can see and buy this' : 'Hidden from customers'}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAvailable(!isAvailable)}
+                                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                                        isAvailable ? 'bg-[#4A7C59]' : 'bg-gray-300'
+                                    }`}
+                                >
+                                    <span
+                                        className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform ${
+                                            isAvailable ? 'translate-x-7' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Actions */}
-                        <div className="flex justify-end gap-3 pt-4 border-t">
+                        <div className="flex gap-3 pt-4">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="flex-1 px-4 py-3 text-[#5C4A3D] bg-white border border-[#E5DDD3] rounded-xl hover:bg-gray-50 transition-colors font-medium"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="flex items-center gap-2 px-4 py-2 bg-[#4A7C59] text-white rounded-lg hover:bg-[#3D6649] disabled:opacity-50 transition-colors"
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#4A7C59] text-white rounded-xl hover:bg-[#3D6649] disabled:opacity-50 transition-colors font-bold"
                             >
-                                {loading && <Loader2 size={16} className="animate-spin" />}
+                                {loading && <Loader2 size={18} className="animate-spin" />}
                                 {isEditing ? 'Save Changes' : 'Add Product'}
                             </button>
                         </div>

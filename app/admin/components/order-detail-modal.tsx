@@ -21,6 +21,7 @@ export default function OrderDetailModal({
   if (!isOpen || !order) return null;
 
   const cause = CURRENT_CAUSES.find(c => c.id === order.proceedsChoice);
+  const canPrintShipping = order.fulfillmentMethod === 'SHIPPING' && !!order.shippingAddress;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -62,16 +63,36 @@ export default function OrderDetailModal({
                 {order.fulfillmentStatus === 'FULFILLED' ? <CheckCircle size={20} /> : <Clock size={20} />}
                 Status: {order.fulfillmentStatus}
               </div>
-              <button
-                onClick={() => onToggleFulfillment(order.id, order.fulfillmentStatus)}
-                className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${
-                  order.fulfillmentStatus === 'FULFILLED'
-                    ? 'bg-white border border-green-200 hover:bg-green-100'
-                    : 'bg-[#4A7C59] text-white hover:bg-[#3D6649]'
-                }`}
-              >
-                Mark as {order.fulfillmentStatus === 'FULFILLED' ? 'Pending' : 'Fulfilled'}
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/admin/orders/${order.id}/packing-slip`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-full text-sm font-bold bg-white border border-[#E5DDD3] hover:bg-[#FDF8F3] transition-all text-[#5C4A3D]"
+                >
+                  Print packing slip
+                </a>
+                {canPrintShipping && (
+                  <a
+                    href={`/admin/orders/${order.id}/address-label`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 rounded-full text-sm font-bold bg-white border border-[#E5DDD3] hover:bg-[#FDF8F3] transition-all text-[#5C4A3D]"
+                  >
+                    Print address label
+                  </a>
+                )}
+                <button
+                  onClick={() => onToggleFulfillment(order.id, order.fulfillmentStatus)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${
+                    order.fulfillmentStatus === 'FULFILLED'
+                      ? 'bg-white border border-green-200 hover:bg-green-100'
+                      : 'bg-[#4A7C59] text-white hover:bg-[#3D6649]'
+                  }`}
+                >
+                  Mark as {order.fulfillmentStatus === 'FULFILLED' ? 'Pending' : 'Fulfilled'}
+                </button>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-8">

@@ -11,6 +11,7 @@ export default function ProductList() {
     const [products, setProducts] = useState<(Product & { category?: string })[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [togglingId, setTogglingId] = useState<string | null>(null);
 
     // Modal states
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -54,6 +55,33 @@ export default function ProductList() {
 
     const handleDeleteClick = (product: Product) => {
         setDeletingProduct(product);
+    };
+
+    // Quick toggle for availability
+    const handleToggleAvailability = async (product: Product & { category?: string }) => {
+        setTogglingId(product.id);
+        try {
+            const res = await fetch(`/api/products/${product.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...product,
+                    isAvailable: !product.isAvailable,
+                }),
+            });
+            if (!res.ok) throw new Error('Failed to update');
+            
+            // Update local state immediately for snappy UX
+            setProducts(prev => prev.map(p => 
+                p.id === product.id ? { ...p, isAvailable: !p.isAvailable } : p
+            ));
+            showSuccess(product.isAvailable ? 'Product hidden from shop' : 'Product now visible in shop');
+        } catch (err) {
+            console.error('Toggle failed:', err);
+            showSuccess('Failed to update - please try again');
+        } finally {
+            setTogglingId(null);
+        }
     };
 
     const handleFormSuccess = (message: string) => {
@@ -118,78 +146,109 @@ export default function ProductList() {
                     <p className="text-gray-500">No products yet. Add your first product!</p>
                 </div>
             ) : (
-                <div className="bg-white shadow rounded-lg overflow-hidden">
+                <div className="bg-white shadow rounded-xl overflow-hidden border border-[#E5DDD3]">
                     <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-[#F9F6F2]">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left text-xs font-bold text-[#8B7355] uppercase tracking-wider">
                                     Product
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left text-xs font-bold text-[#8B7355] uppercase tracking-wider">
                                     Price
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Category
+                                <th className="px-6 py-3 text-center text-xs font-bold text-[#8B7355] uppercase tracking-wider">
+                                    In Shop
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Status
-                                </th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-right text-xs font-bold text-[#8B7355] uppercase tracking-wider">
                                     Actions
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white divide-y divide-gray-100">
                             {products.map((product) => (
-                                <tr key={product.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                <tr 
+                                    key={product.id} 
+                                    className={`transition-all ${
+                                        product.isAvailable 
+                                            ? 'hover:bg-[#FDF8F3]' 
+                                            : 'bg-gray-50 opacity-60'
+                                    }`}
+                                >
+                                    <td className="px-6 py-4">
                                         <div className="flex items-center">
                                             {product.imageUrl && (
                                                 <img
                                                     src={product.imageUrl}
                                                     alt={product.name}
-                                                    className="w-10 h-10 rounded-lg object-cover mr-3"
+                                                    className={`w-12 h-12 rounded-lg object-cover mr-4 ${
+                                                        !product.isAvailable ? 'grayscale' : ''
+                                                    }`}
                                                 />
                                             )}
                                             <div>
-                                                <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                                                <div className="text-sm text-gray-500 truncate max-w-xs">
-                                                    {product.description}
+                                                <div className={`font-medium ${
+                                                    product.isAvailable ? 'text-[#5C4A3D]' : 'text-gray-400'
+                                                }`}>
+                                                    {product.name}
                                                 </div>
+                                                {product.category && (
+                                                    <div className="text-xs text-gray-400">
+                                                        {product.category}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <td className={`px-6 py-4 text-sm font-medium ${
+                                        product.isAvailable ? 'text-[#5C4A3D]' : 'text-gray-400'
+                                    }`}>
                                         {formatPrice(product.price)}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {product.category || '—'}
+                                    <td className="px-6 py-4">
+                                        {/* Toggle Switch */}
+                                        <div className="flex justify-center">
+                                            <button
+                                                onClick={() => handleToggleAvailability(product)}
+                                                disabled={togglingId === product.id}
+                                                className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#4A7C59] focus:ring-offset-2 ${
+                                                    product.isAvailable 
+                                                        ? 'bg-[#4A7C59]' 
+                                                        : 'bg-gray-300'
+                                                } ${togglingId === product.id ? 'opacity-50' : ''}`}
+                                                aria-label={product.isAvailable ? 'Hide from shop' : 'Show in shop'}
+                                            >
+                                                <span
+                                                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform ${
+                                                        product.isAvailable ? 'translate-x-9' : 'translate-x-1'
+                                                    }`}
+                                                />
+                                                <span className={`absolute text-[10px] font-bold uppercase ${
+                                                    product.isAvailable 
+                                                        ? 'left-2 text-white' 
+                                                        : 'right-2 text-gray-500'
+                                                }`}>
+                                                    {product.isAvailable ? 'On' : 'Off'}
+                                                </span>
+                                            </button>
+                                        </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${product.isAvailable
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-gray-100 text-gray-800'
-                                                }`}
-                                        >
-                                            {product.isAvailable ? 'Available' : 'Unavailable'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                            onClick={() => handleEditClick(product)}
-                                            className="text-[#4A7C59] hover:text-[#3D6649] mr-3"
-                                            title="Edit"
-                                        >
-                                            <Pencil size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteClick(product)}
-                                            className="text-red-600 hover:text-red-800"
-                                            title="Delete"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => handleEditClick(product)}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#4A7C59] bg-[#E8F0EA] rounded-lg hover:bg-[#d4e5d8] transition-colors"
+                                            >
+                                                <Pencil size={14} />
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteClick(product)}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                                            >
+                                                <Trash2 size={14} />
+                                                Delete
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

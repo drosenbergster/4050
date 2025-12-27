@@ -6,9 +6,23 @@ import Toast from "@/app/components/toast";
 import { useBasket } from "@/app/context/basket-context";
 import Link from "next/link";
 import { Leaf, Mail, MapPin } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export default function RootContent({ children }: { children: React.ReactNode }) {
   const { toast, hideToast } = useBasket();
+  const pathname = usePathname();
+  
+  // Hide public chrome on admin pages
+  const isAdminPage = pathname?.startsWith('/admin');
+
+  // Admin pages get a clean, focused layout
+  if (isAdminPage) {
+    return (
+      <div className="min-h-screen">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">

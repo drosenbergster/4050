@@ -1,24 +1,34 @@
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+/**
+ * DEV-ONLY Admin Preview Page
+ * This bypasses auth completely for local testing.
+ * ⚠️ Only works in development mode!
+ */
+
 import { useEffect, useState } from 'react';
 import { formatPrice } from '@/lib/format';
-import { Package, ShoppingBag, LogOut, Coins, Leaf, CheckCircle, Clock, Truck, Home, Filter } from 'lucide-react';
-import ProductList from './components/product-list';
+import { Package, ShoppingBag, Coins, Leaf, CheckCircle, Clock, Truck, Home, Filter } from 'lucide-react';
+import ProductList from '../components/product-list';
 import { CURRENT_CAUSES } from '@/lib/causes';
-import OrderDetailModal from './components/order-detail-modal';
+import OrderDetailModal from '../components/order-detail-modal';
 import { FulfillmentStatus, OrderWithItems } from '@/lib/types';
 
-export default function AdminDashboard() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+export default function DevAdminDashboard() {
   const [activeTab, setActiveTab] = useState<'orders' | 'products'>('products');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [showPendingOnly, setShowPendingOnly] = useState(true); // Default to pending
+  const [showPendingOnly, setShowPendingOnly] = useState(true);
+
+  // Block in production
+  const [isBlocked, setIsBlocked] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
+      setIsBlocked(true);
+    }
+  }, []);
 
   // Counts for quick reference
   const pendingOrders = orders.filter(o => o.fulfillmentStatus === 'PENDING');
@@ -26,20 +36,14 @@ export default function AdminDashboard() {
   const shippingPending = pendingOrders.filter(o => o.fulfillmentMethod === 'SHIPPING').length;
   const pickupPending = pendingOrders.filter(o => o.fulfillmentMethod === 'LOCAL_PICKUP').length;
   
-  // Filtered orders based on toggle
+  // Filtered orders
   const displayedOrders = showPendingOnly ? pendingOrders : orders;
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/admin/login');
-    }
-  }, [status, router]);
-
-  useEffect(() => {
-    if (session && activeTab === 'orders') {
+    if (activeTab === 'orders') {
       fetchOrders();
     }
-  }, [session, activeTab]);
+  }, [activeTab]);
 
   const fetchOrders = async () => {
     setIsLoadingOrders(true);
@@ -81,30 +85,29 @@ export default function AdminDashboard() {
     setIsDetailModalOpen(true);
   };
 
-  if (status === 'loading') {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
-  }
-
-  if (!session) {
-    return null;
+  if (isBlocked) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-red-50">
+        <div className="text-center">
+          <p className="text-2xl font-bold text-red-600">⛔ Dev Page Blocked</p>
+          <p className="text-gray-600 mt-2">This page only works on localhost.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Dev Banner */}
+      <div className="bg-yellow-400 text-yellow-900 text-center py-2 text-sm font-bold">
+        🛠️ DEV MODE - No Auth Required (localhost only)
+      </div>
+
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-serif font-bold text-[#2C3E50]">Admin Dashboard</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Logged in as {session.user?.email}</span>
-            <button
-              onClick={() => signOut({ callbackUrl: '/admin/login' })}
-              className="flex items-center gap-2 text-sm text-red-600 hover:text-red-800"
-            >
-              <LogOut size={16} />
-              Sign Out
-            </button>
-          </div>
+          <span className="text-sm text-gray-500">Dev Preview</span>
         </div>
       </header>
 
@@ -142,7 +145,7 @@ export default function AdminDashboard() {
 
         {activeTab === 'orders' ? (
           <div className="space-y-6">
-            {/* Today's Tasks - The First Thing Mom Sees */}
+            {/* Today's Tasks */}
             {pendingCount > 0 && (
               <div className="bg-[#FDF8F3] border-2 border-[#E5DDD3] rounded-2xl p-6">
                 <h2 className="text-xl font-serif font-bold text-[#5C4A3D] mb-4">
@@ -222,7 +225,6 @@ export default function AdminDashboard() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            {/* Fulfillment Method Icon */}
                             <div className={`p-2 rounded-lg ${
                               order.fulfillmentMethod === 'SHIPPING' 
                                 ? 'bg-blue-50 text-blue-600' 
@@ -269,7 +271,7 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* Impact Summary - Moved Lower */}
+            {/* Impact Summary - Collapsed */}
             <details className="group">
               <summary className="flex items-center gap-2 cursor-pointer text-sm font-bold text-[#8B7355] uppercase tracking-wider py-2">
                 <Leaf size={16} />

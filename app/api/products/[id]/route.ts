@@ -2,13 +2,17 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
 import { getAuthSession } from '@/lib/server/auth';
 
+// Dev mode check - only for localhost testing
+const isDevMode = () => process.env.NODE_ENV === 'development';
+
 export async function PUT(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const session = await getAuthSession();
 
-    if (!session) {
+    // Allow in dev mode OR with valid session
+    if (!session && !isDevMode()) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -45,7 +49,8 @@ export async function DELETE(
 ) {
     const session = await getAuthSession();
 
-    if (!session) {
+    // Allow in dev mode OR with valid session
+    if (!session && !isDevMode()) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

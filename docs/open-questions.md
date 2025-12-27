@@ -110,6 +110,7 @@ Use this document to capture answers to key questions that will guide developmen
 - Net weight labeling?
 
 **Notes:**
+- Admin includes print-friendly fulfillment pages (packing slip + address label (no postage)). See: `docs/admin-fulfillment-printing.md`
 
 
 ---
@@ -191,6 +192,7 @@ TBD
 **Notes:**
 - Currently using flat $10 shipping fee
 - Location-based adjustments can be added later
+- Postage shipping labels are not implemented yet (current Admin prints address labels only). See: `docs/admin-fulfillment-printing.md`
 
 
 ---

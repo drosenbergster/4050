@@ -38,14 +38,11 @@ export interface Order {
   shippingCost: number | null; // in cents
   subtotal: number; // in cents
   total: number; // in cents
-  proceedsChoice?: string | null; // selected cause id
-  extraSupportAmount?: number | null; // in cents
-  seedCount: number; // seeds sown (1 base + 1 per $10, excludes shipping)
   paymentStatus: PaymentStatus;
   fulfillmentStatus: FulfillmentStatus;
   stripePaymentIntentId: string | null;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface OrderItem {
@@ -62,26 +59,26 @@ export interface OrderWithItems extends Order {
   items: OrderItem[];
 }
 
-// Basket types (client-side only)
-export interface BasketItem {
+// Cart types (client-side only)
+export interface CartItem {
   productId: string;
   quantity: number;
 }
 
-export interface Basket {
-  items: BasketItem[];
+export interface Cart {
+  items: CartItem[];
   lastUpdated: Date;
 }
 
-export interface BasketItemWithProduct {
+export interface CartItemWithProduct {
   productId: string;
   quantity: number;
   product: Product;
   lineTotal: number; // calculated: product.price * quantity
 }
 
-export interface BasketWithProducts {
-  items: BasketItemWithProduct[];
+export interface CartWithProducts {
+  items: CartItemWithProduct[];
   subtotal: number; // sum of all line totals
   itemCount: number; // sum of all quantities
 }

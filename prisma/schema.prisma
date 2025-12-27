@@ -8,8 +8,6 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  // For Vercel/serverless runtime: DATABASE_URL should be the transaction pooler (pgbouncer).
-  // For migrations/introspection: DIRECT_URL should be the direct connection.
   directUrl = env("DIRECT_URL")
 }
 
@@ -32,7 +30,6 @@ model Product {
   description String   @db.Text
   price       Int      // Price in cents (e.g., 999 = $9.99)
   imageUrl    String
-  category    String?  // Product category (Applesauce, Jams, Spreads, Dried Goods, Pickled)
   isAvailable Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -40,7 +37,6 @@ model Product {
   orderItems OrderItem[]
 
   @@index([isAvailable])
-  @@index([category])
   @@map("products")
 }
 
@@ -71,9 +67,6 @@ model Order {
   shippingCost          Int?              // In cents (flat $10.00 = 1000)
   subtotal              Int               // In cents
   total                 Int               // In cents
-  proceedsChoice        String?           // The cause selected by the customer
-  extraSupportAmount    Int?              @default(0) // Voluntary "Sow Extra Seeds" contribution in cents
-  seedCount             Int               @default(1) // Number of seeds based on spend ($10 = 1 seed)
   paymentStatus         PaymentStatus     @default(PENDING)
   fulfillmentStatus     FulfillmentStatus @default(PENDING)
   stripePaymentIntentId String?           @unique

@@ -25,3 +25,6 @@ This project is a small Next.js e-commerce experience designed for a simple “h
 
 
 
+
+
+

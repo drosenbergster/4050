@@ -35,8 +35,15 @@ John, when you create the next stories, please focus on:
 ## 6. Maintenance Note
 - **Admin Access**: Remind the team that Ilene's email needs to be added to `ADMIN_ALLOWED_EMAILS` in Vercel for her to access the Impact Tracker.
 
+## 7. Admin Operations Notes (Fulfillment Printing)
+- **Printing from Admin**: Packing slips + (non-postage) address labels can be printed directly from the Admin order detail modal.
+  - Reference: `docs/admin-fulfillment-printing.md`
+  - Follow-up (future): Postage labels require a shipping provider integration (Shippo/EasyPost).
+
 ---
 *Reference documents: `docs/prd.md`, `docs/architecture.md`, and `docs/STRATEGIC-REFOCUS-SUMMARY.md` for full details.*
+
+
 
 
 

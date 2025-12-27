@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Product } from '@/lib/types';
-import { X, Loader2, AlertTriangle } from 'lucide-react';
+import { X, Loader2, Trash2 } from 'lucide-react';
+import { formatPrice } from '@/lib/format';
 
 interface DeleteConfirmModalProps {
     isOpen: boolean;
@@ -56,51 +57,84 @@ export default function DeleteConfirmModal({
 
             {/* Modal */}
             <div className="flex min-h-full items-center justify-center p-4">
-                <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-red-100 rounded-full">
-                                <AlertTriangle className="w-6 h-6 text-red-600" />
+                <div className="relative bg-[#FDF8F3] rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-[#E5DDD3]">
+                    {/* Header with Product Preview */}
+                    <div className="bg-white border-b border-[#E5DDD3] p-6">
+                        <div className="flex items-start gap-4">
+                            {/* Product Image */}
+                            <div className="flex-shrink-0">
+                                <img
+                                    src={product.imageUrl}
+                                    alt={product.name}
+                                    className="w-16 h-16 rounded-xl object-cover border-2 border-red-200 opacity-60 grayscale"
+                                />
                             </div>
-                            <h2 className="text-xl font-semibold text-gray-900">Delete Product</h2>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl font-serif font-bold text-[#5C4A3D]">
+                                        Remove Product?
+                                    </h2>
+                                    <button
+                                        onClick={onClose}
+                                        className="text-gray-400 hover:text-[#5C4A3D] transition-colors"
+                                    >
+                                        <X size={24} />
+                                    </button>
+                                </div>
+                                <p className="text-sm text-[#8B7355] mt-1">
+                                    {product.name} • {formatPrice(product.price)}
+                                </p>
+                            </div>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600"
-                        >
-                            <X size={24} />
-                        </button>
                     </div>
 
                     {/* Content */}
-                    <p className="text-gray-600 mb-4">
-                        Are you sure you want to delete <strong>{product.name}</strong>? This action cannot be undone.
-                    </p>
-
-                    {/* Error */}
-                    {error && (
-                        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
-                            {error}
+                    <div className="p-6">
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 bg-red-100 rounded-full flex-shrink-0">
+                                    <Trash2 className="w-5 h-5 text-red-600" />
+                                </div>
+                                <div>
+                                    <p className="font-medium text-red-800">
+                                        This will permanently remove "{product.name}" from your shop.
+                                    </p>
+                                    <p className="text-sm text-red-600 mt-1">
+                                        This can't be undone.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                    )}
 
-                    {/* Actions */}
-                    <div className="flex justify-end gap-3">
-                        <button
-                            onClick={onClose}
-                            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleDelete}
-                            disabled={loading}
-                            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-                        >
-                            {loading && <Loader2 size={16} className="animate-spin" />}
-                            Delete
-                        </button>
+                        {/* Tip */}
+                        <p className="text-sm text-[#8B7355] italic mb-4">
+                            💡 Tip: If you just want to hide it temporarily, use the ON/OFF toggle instead.
+                        </p>
+
+                        {/* Error */}
+                        {error && (
+                            <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm">
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={onClose}
+                                className="flex-1 px-4 py-3 text-[#5C4A3D] bg-white border border-[#E5DDD3] rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                            >
+                                Keep It
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                disabled={loading}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors font-bold"
+                            >
+                                {loading && <Loader2 size={18} className="animate-spin" />}
+                                Yes, Remove It
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -22,6 +22,18 @@
   - **Database Seeding**: Fixed `npm run db:seed` script; now fully reliable. 🌱
   - **Technical Debt**: Removed deprecated components and fixed hydration/LCP errors.
   - **Transactional Emails**: Implemented Resend integration and Stripe Webhooks. 📧
+- [x] **Admin Fulfillment Printing (Dec 27, 2025)**:
+  - Added printable **packing slip** page from the Admin order modal.
+  - Added printable **address label (no postage)** page for shipping orders.
+  - Defaulted Admin landing to **Products** tab (catalog-first).
+  - Fixed orders list: clicking the fulfillment pill no longer opens the detail modal.
+- [x] **Admin UX Improvements (Dec 27, 2025)**:
+  - **Products Tab**: Added ON/OFF toggles for availability, labeled Edit/Delete buttons, dimmed unavailable products.
+  - **Edit Modal**: Added image preview, warm "Kitchen Journal" styling, helpful field hints.
+  - **Delete Modal**: Shows product being deleted, friendly "Keep It" / "Yes, Remove It" buttons, tip about using toggle instead.
+  - **Orders Tab**: Added pending count badge, "Pending Only" / "All Orders" filter buttons, "Today's Tasks" summary box.
+  - **Admin Layout**: Hidden public navbar/footer in admin for focused experience.
+  - **Dev Testing**: Added `/admin/dev` page for localhost-only testing without OAuth.
 
 ## Pending / Blocked
 - [ ] **Stripe Live Mode**: Awaiting live API keys for production testing.
