@@ -1,7 +1,10 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
-import { BasketItemWithProduct, Product } from '@/lib/types';
+import { CartItemWithProduct, Product } from '@/lib/types';
+
+// Alias for naming consistency with "Basket" branding
+type BasketItemWithProduct = CartItemWithProduct;
 
 interface BasketState {
   items: BasketItemWithProduct[];
