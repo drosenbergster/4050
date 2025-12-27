@@ -162,10 +162,14 @@ function getCurrentWeek(): number {
 }
 
 function weekToDate(week: number): string {
+  // Convert week number (1-52) to approximate date
+  // Week 1 = ~Jan 1, Week 52 = ~Dec 31
+  const dayOfYear = (week - 1) * 7 + 1;
+  const date = new Date(new Date().getFullYear(), 0, dayOfYear);
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const month = weekToMonth(week);
-  const weekInMonth = Math.ceil((week - month * 4.33));
-  return `${months[month]} Week ${Math.min(4, weekInMonth)}`;
+  const month = date.getMonth();
+  const day = date.getDate();
+  return `${months[month]} ${day}`;
 }
 
 export default function SeasonalPlanner() {
@@ -453,7 +457,7 @@ export default function SeasonalPlanner() {
           <div className="mt-4 pt-4 border-t border-[#E5DDD3]">
             <div className="flex items-center gap-2 text-sm text-[#4A7C59]">
               <Sun size={16} />
-              <span>Current: Week {currentWeek} ({weekToDate(currentWeek)})</span>
+              <span>Today: {weekToDate(currentWeek)}</span>
             </div>
           </div>
         </div>
