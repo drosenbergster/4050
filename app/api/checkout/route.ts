@@ -210,9 +210,7 @@ export async function POST(request: Request) {
                     shippingCost: fulfillmentMethod === 'SHIPPING' ? shippingCost : null,
                     subtotal: subtotal,
                     total: total,
-                    proceedsChoice: proceedsChoice,
-                    extraSupportAmount: extraSupportAmount,
-                    seedCount: seedCount,
+                    // Note: proceedsChoice, extraSupportAmount, seedCount not stored yet (needs DB migration)
                     paymentStatus: 'PENDING',
                     fulfillmentStatus: 'PENDING',
                     items: {
