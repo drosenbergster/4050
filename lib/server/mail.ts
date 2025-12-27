@@ -12,7 +12,7 @@ type EmailOrder = {
   id: string;
   customerName: string;
   customerEmail: string;
-  seedCount: number;
+  seedCount?: number | null; // Optional - may not be in DB yet
   items: EmailOrderItem[];
   subtotal: number;
   shippingCost?: number | null;
@@ -47,6 +47,7 @@ export async function sendOrderConfirmationEmail(order: EmailOrder) {
             Your order from the heritage trees at 4050 has been placed. Every jar represents a piece of our garden shared with the community.
           </p>
 
+          ${order.seedCount ? `
           <div style="background-color: #E8F0EA; padding: 20px; border-radius: 12px; margin: 25px 0; border: 1px solid #4A7C591A;">
             <h2 style="color: #4A7C59; margin-top: 0; font-size: 20px;">Seeds Sown 🌱</h2>
             <p style="margin-bottom: 0;">
@@ -54,6 +55,7 @@ export async function sendOrderConfirmationEmail(order: EmailOrder) {
               Thank you for helping the garden flourish beyond our backyard.
             </p>
           </div>
+          ` : ''}
 
           <h3 style="border-bottom: 1px solid #E5DDD3; padding-bottom: 8px;">Order Summary (#${order.id.slice(-6).toUpperCase()})</h3>
           <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
