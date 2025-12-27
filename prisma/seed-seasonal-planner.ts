@@ -9,7 +9,8 @@ import { PrismaClient, CropType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Portland, OR Zone 8b Crops with accurate harvest windows
+// Portland, OR Zone 8b/9a Crops with accurate harvest windows
+// Last frost: ~April 15 | First frost: ~October 25 | Growing season: ~200 days
 const PORTLAND_CROPS = [
   {
     name: "Apples",
@@ -24,37 +25,37 @@ const PORTLAND_CROPS = [
     peakStart: 40,     // Oct 1
     peakEnd: 44,       // Oct 31
     color: "#C41E3A",
-    notes: "Heritage varieties. Peak harvest in October. Late varieties store well into winter."
+    notes: "🍎 PERENNIAL TREE | Heritage varieties from established trees. Harvest when fruit separates easily from branch with slight twist. Store at 32-40°F for 2-6 months depending on variety. Peak picking parties in October!"
   },
   {
     name: "Tomatoes",
     type: CropType.ANNUAL,
-    seedStartWeek: 5,   // Feb 1 (8 weeks before last frost ~Mar 15)
-    seedStartNotes: "Start indoors 8 weeks before last frost (Feb 1)",
+    seedStartWeek: 6,   // Early Feb (8-10 weeks before last frost)
+    seedStartNotes: "Start indoors 8-10 weeks before last frost (early Feb). Keep at 70-85°F.",
     plantOutWeekStart: 20, // May 15
     plantOutWeekEnd: 24,   // Jun 15
     directSow: false,
-    harvestStart: 29,  // Jul 15
-    harvestEnd: 41,    // Oct 15
-    peakStart: 33,     // Aug 15
-    peakEnd: 37,       // Sep 15
+    harvestStart: 28,  // Mid-July
+    harvestEnd: 42,    // Mid-Oct
+    peakStart: 32,     // Aug 10
+    peakEnd: 38,       // Sep 20
     color: "#E74C3C",
-    notes: "Needs consistent summer heat. Protect from late blight in wet fall weather."
+    notes: "🌡️ Soil temp: 70-85°F for germination | ⏱️ Germination: 5-10 days | 📅 60-85 days from transplant to harvest. Transplant when night temps stay above 50°F. Protect from late blight in wet fall weather. Determinate varieties ripen all at once (great for sauce day!)."
   },
   {
     name: "Cucumbers",
     type: CropType.ANNUAL,
-    seedStartWeek: 15,  // Apr 15 (3-4 weeks before transplant)
-    seedStartNotes: "Start indoors 3-4 weeks before transplant, or direct sow after soil warms",
+    seedStartWeek: 16,  // Mid-April (3-4 weeks before transplant)
+    seedStartNotes: "Start indoors 3-4 weeks before transplant OR direct sow after last frost when soil is 60°F+",
     plantOutWeekStart: 20,
-    plantOutWeekEnd: 24,
+    plantOutWeekEnd: 26,
     directSow: true,   // Can direct sow OR start indoors
     harvestStart: 25,
-    harvestEnd: 39,
-    peakStart: 29,
-    peakEnd: 35,
+    harvestEnd: 38,
+    peakStart: 28,
+    peakEnd: 34,
     color: "#27AE60",
-    notes: "Succession plant every 2-3 weeks for continuous harvest. Great for pickles!"
+    notes: "🌡️ Soil temp: 60-95°F, optimal 70-85°F | ⏱️ Germination: 3-10 days | 📅 50-70 days to harvest. Succession plant every 2-3 weeks. Pick at 2-4\" for cornichons, 4-6\" for pickles, 6-8\" for slicing. Don't let fruits get too large - reduces production!"
   },
   {
     name: "Green Beans",
@@ -62,29 +63,29 @@ const PORTLAND_CROPS = [
     seedStartWeek: null, // Direct sow only
     seedStartNotes: null,
     plantOutWeekStart: 18, // May 1
-    plantOutWeekEnd: 27,   // Jul 1
+    plantOutWeekEnd: 28,   // Jul 10
     directSow: true,
     harvestStart: 24,
-    harvestEnd: 39,
+    harvestEnd: 38,
     peakStart: 27,
-    peakEnd: 31,
+    peakEnd: 32,
     color: "#2ECC71",
-    notes: "Direct sow only - beans don't like transplanting. Multiple succession plantings for extended harvest."
+    notes: "🌡️ Soil temp: 60-85°F, optimal 70-80°F | ⏱️ Germination: 6-14 days | 📅 Bush: 50-60 days, Pole: 60-70 days. DIRECT SOW ONLY - beans hate transplanting! Plant 1\" deep, 3\" apart. Succession plant every 2-3 weeks May-July for continuous harvest. Pick when pencil-thick."
   },
   {
     name: "Peppers",
     type: CropType.ANNUAL,
-    seedStartWeek: 5,   // Feb 1
-    seedStartNotes: "Start indoors 8-10 weeks before last frost (Feb 1). Peppers need warmth!",
-    plantOutWeekStart: 20,
-    plantOutWeekEnd: 24,
+    seedStartWeek: 5,   // Late Jan/Early Feb
+    seedStartNotes: "Start indoors 8-10 weeks before last frost (late Jan-early Feb). Bottom heat helps - peppers need 80-90°F for germination!",
+    plantOutWeekStart: 21,
+    plantOutWeekEnd: 25,
     directSow: false,
-    harvestStart: 29,
-    harvestEnd: 41,
-    peakStart: 33,
+    harvestStart: 28,
+    harvestEnd: 42,
+    peakStart: 32,
     peakEnd: 39,
     color: "#F39C12",
-    notes: "Need warm soil (60°F+). Similar timing to tomatoes. Great for pepper jelly and pickled peppers."
+    notes: "🌡️ Soil temp: 70-90°F, optimal 80-85°F | ⏱️ Germination: 10-21 days (SLOW - be patient!) | 📅 60-90 days from transplant. Wait for soil to reach 65°F before transplanting. Green peppers = immature; leave on plant for red/yellow. Great for pepper jelly!"
   },
   {
     name: "Blueberries",
@@ -99,7 +100,7 @@ const PORTLAND_CROPS = [
     peakStart: 27,
     peakEnd: 30,
     color: "#3498DB",
-    notes: "Pacific Northwest is prime blueberry country! Acidic soil preferred."
+    notes: "🫐 PERENNIAL SHRUB | Pacific Northwest is prime blueberry country! Needs acidic soil pH 4.5-5.5. Add sulfur if needed. Mulch heavily with pine needles or bark. Net to protect from birds during harvest. Berries ready when they fall off easily into your hand."
   },
   {
     name: "Raspberries",
@@ -110,11 +111,11 @@ const PORTLAND_CROPS = [
     plantOutWeekEnd: null,
     directSow: false,
     harvestStart: 23,
-    harvestEnd: 41,
+    harvestEnd: 40,
     peakStart: 24,
     peakEnd: 30,
     color: "#E91E63",
-    notes: "Summer varieties: Jun-Jul. Everbearing/fall varieties: Aug-Oct. Perfect for jam!"
+    notes: "🍇 PERENNIAL CANES | Summer-bearing: June-July. Everbearing: June-July + Sept-Oct. Harvest when berries pull off easily with slight tug. Pick every 2-3 days during peak. Prune summer-bearing after fruiting; leave everbearing fall canes until spring. Perfect for jam!"
   },
   {
     name: "Plums",
@@ -129,7 +130,7 @@ const PORTLAND_CROPS = [
     peakStart: 32,
     peakEnd: 35,
     color: "#9B59B6",
-    notes: "Timing varies by variety. Great for jam, butter, and fresh eating."
+    notes: "🍑 PERENNIAL TREE | Japanese varieties ripen earlier (July) than European (Aug-Sep). Harvest when fruit gives slightly to pressure and separates from stem. Thin fruits in spring to 4-6\" apart for larger size. Excellent for jam, butter, and wine!"
   },
   {
     name: "Peas",
@@ -137,59 +138,59 @@ const PORTLAND_CROPS = [
     seedStartWeek: null,
     seedStartNotes: null,
     plantOutWeekStart: 7,  // Feb 15
-    plantOutWeekEnd: 20,   // May 15
+    plantOutWeekEnd: 18,   // Early May
     directSow: true,
-    harvestStart: 16,
+    harvestStart: 14,
     harvestEnd: 26,
     peakStart: 18,
     peakEnd: 22,
     color: "#1ABC9C",
-    notes: "Cool season crop - Portland's spring is perfect! Direct sow as early as Feb. Heat stops production."
+    notes: "🌡️ Soil temp: 40-75°F, optimal 55-65°F | ⏱️ Germination: 7-14 days | 📅 55-70 days to harvest. COOL SEASON - sow as early as soil can be worked! Tolerates light frost. Inoculate seeds with rhizobium for nitrogen fixing. Heat above 80°F stops production - get them in early!"
   },
   {
     name: "Basil",
     type: CropType.ANNUAL,
-    seedStartWeek: 11,  // Mar 15
-    seedStartNotes: "Start indoors 6 weeks before last frost (mid-March)",
-    plantOutWeekStart: 20,
-    plantOutWeekEnd: 24,
+    seedStartWeek: 10,  // Early March
+    seedStartNotes: "Start indoors 6-8 weeks before last frost (early March). Needs light to germinate - don't cover seeds!",
+    plantOutWeekStart: 21,
+    plantOutWeekEnd: 26,
     directSow: false,
-    harvestStart: 22,
-    harvestEnd: 41,
-    peakStart: 29,
-    peakEnd: 35,
+    harvestStart: 24,
+    harvestEnd: 40,
+    peakStart: 28,
+    peakEnd: 36,
     color: "#16A085",
-    notes: "Frost sensitive! Wait until soil is warm. Make pesto and freeze for winter."
+    notes: "🌡️ Soil temp: 70°F minimum | ⏱️ Germination: 5-10 days | 📅 60-90 days to harvest. FROST SENSITIVE! Wait until night temps stay above 50°F. Pinch flower buds to extend harvest. Make pesto in bulk and freeze in ice cube trays for winter!"
   },
   {
     name: "Parsley",
     type: CropType.BIENNIAL,
-    seedStartWeek: 5,   // Feb 1
-    seedStartNotes: "Start indoors 6 weeks before last frost, or direct sow in spring",
-    plantOutWeekStart: 11, // Mar 15
-    plantOutWeekEnd: 29,   // Jul 15
+    seedStartWeek: 6,   // Early Feb
+    seedStartNotes: "Start indoors 6-10 weeks before last frost. Soak seeds 24hrs to speed germination. VERY SLOW to sprout!",
+    plantOutWeekStart: 12, // Mid-March
+    plantOutWeekEnd: 30,   // Late July
     directSow: true,
-    harvestStart: 11,
+    harvestStart: 12,
     harvestEnd: 46,
     peakStart: null,
     peakEnd: null,
     color: "#27AE60",
-    notes: "Nearly year-round in Portland's mild climate. Biennial - will bolt second year."
+    notes: "🌡️ Soil temp: 50-85°F, optimal 65-70°F | ⏱️ Germination: 14-28 days (VERY SLOW!) | 📅 70-90 days to harvest. Soak seeds 24hr before planting. Nearly year-round in Portland's mild climate. Biennial - flowers and goes to seed in year 2. Curly or flat-leaf varieties."
   },
   {
     name: "Sorrel",
     type: CropType.PERENNIAL,
-    seedStartWeek: null,
-    seedStartNotes: null,
-    plantOutWeekStart: null,
-    plantOutWeekEnd: null,
-    directSow: false,
+    seedStartWeek: 10,
+    seedStartNotes: "Start indoors in spring or direct sow. Easy to establish!",
+    plantOutWeekStart: 12,
+    plantOutWeekEnd: 20,
+    directSow: true,
     harvestStart: 9,
     harvestEnd: 48,
     peakStart: 14,
     peakEnd: 20,
     color: "#2ECC71",
-    notes: "Perennial! One of the first greens up in spring. Lemony flavor great for pesto and soups."
+    notes: "🌡️ Soil temp: 60-70°F optimal | ⏱️ Germination: 7-14 days | 📅 45-60 days from seed. PERENNIAL - returns every year! One of first greens in spring. Harvest outer leaves, leaving crown to regrow. Lemony/tart flavor. Great for pesto, soups, sauces. Tolerates partial shade."
   }
 ];
 
