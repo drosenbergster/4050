@@ -19,18 +19,20 @@ export async function PUT(
     try {
         const { id } = await params;
         const body = await request.json();
-        const { name, description, price, imageUrl, isAvailable } = body;
-        // Note: category field not in database schema yet
+        const { name, description, price, imageUrl, isAvailable, category } = body;
+
+        // Build update data - only include fields that were provided
+        const updateData: Record<string, unknown> = {};
+        if (name !== undefined) updateData.name = name;
+        if (description !== undefined) updateData.description = description;
+        if (price !== undefined) updateData.price = price;
+        if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+        if (isAvailable !== undefined) updateData.isAvailable = isAvailable;
+        if (category !== undefined) updateData.category = category || null;
 
         const product = await prisma.product.update({
             where: { id },
-            data: {
-                name,
-                description,
-                price,
-                imageUrl,
-                isAvailable,
-            },
+            data: updateData,
         });
 
         return NextResponse.json(product);

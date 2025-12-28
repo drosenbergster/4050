@@ -72,24 +72,31 @@ export async function PATCH(
     const { id } = await params;
     const data = await request.json();
 
+    // Build update data - only include fields that were provided
+    const updateData: Record<string, unknown> = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.type !== undefined) updateData.type = data.type;
+    if (data.seedStartWeek !== undefined) updateData.seedStartWeek = data.seedStartWeek;
+    if (data.seedStartNotes !== undefined) updateData.seedStartNotes = data.seedStartNotes;
+    if (data.plantOutWeekStart !== undefined) updateData.plantOutWeekStart = data.plantOutWeekStart;
+    if (data.plantOutWeekEnd !== undefined) updateData.plantOutWeekEnd = data.plantOutWeekEnd;
+    if (data.directSow !== undefined) updateData.directSow = data.directSow;
+    if (data.harvestStart !== undefined) updateData.harvestStart = data.harvestStart;
+    if (data.harvestEnd !== undefined) updateData.harvestEnd = data.harvestEnd;
+    if (data.peakStart !== undefined) updateData.peakStart = data.peakStart;
+    if (data.peakEnd !== undefined) updateData.peakEnd = data.peakEnd;
+    if (data.color !== undefined) updateData.color = data.color;
+    if (data.notes !== undefined) updateData.notes = data.notes;
+    if (data.ingredientId !== undefined) updateData.ingredientId = data.ingredientId;
+    // Yield tracking fields
+    if (data.plantCount !== undefined) updateData.plantCount = data.plantCount;
+    if (data.yieldPerUnit !== undefined) updateData.yieldPerUnit = data.yieldPerUnit;
+    if (data.yieldUnit !== undefined) updateData.yieldUnit = data.yieldUnit;
+    if (data.lastYearYield !== undefined) updateData.lastYearYield = data.lastYearYield;
+
     const crop = await prisma.crop.update({
       where: { id },
-      data: {
-        name: data.name,
-        type: data.type,
-        seedStartWeek: data.seedStartWeek,
-        seedStartNotes: data.seedStartNotes,
-        plantOutWeekStart: data.plantOutWeekStart,
-        plantOutWeekEnd: data.plantOutWeekEnd,
-        directSow: data.directSow,
-        harvestStart: data.harvestStart,
-        harvestEnd: data.harvestEnd,
-        peakStart: data.peakStart,
-        peakEnd: data.peakEnd,
-        color: data.color,
-        notes: data.notes,
-        ingredientId: data.ingredientId,
-      },
+      data: updateData,
       include: {
         ingredient: true,
       }
@@ -126,4 +133,5 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to delete crop' }, { status: 500 });
   }
 }
+
 

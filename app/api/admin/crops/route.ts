@@ -25,7 +25,28 @@ export async function GET() {
 
     const crops = await prisma.crop.findMany({
       include: {
-        ingredient: true,
+        ingredient: {
+          include: {
+            recipeIngredients: {
+              include: {
+                recipe: {
+                  select: {
+                    id: true,
+                    name: true,
+                    retailPrice: true,
+                    status: true,
+                    product: {
+                      select: {
+                        id: true,
+                        name: true,
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
       },
       orderBy: [
         { harvestStart: 'asc' },
@@ -67,6 +88,11 @@ export async function POST(request: NextRequest) {
         color: data.color || '#4A7C59',
         notes: data.notes || null,
         ingredientId: data.ingredientId || null,
+        // Yield tracking
+        plantCount: data.plantCount || 0,
+        yieldPerUnit: data.yieldPerUnit || null,
+        yieldUnit: data.yieldUnit || 'lbs',
+        lastYearYield: data.lastYearYield || null,
       },
       include: {
         ingredient: true,
@@ -79,4 +105,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create crop' }, { status: 500 });
   }
 }
+
 

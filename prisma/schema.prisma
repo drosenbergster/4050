@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,39 +8,171 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Admin user model for authentication
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id           String   @id(map: "User_pkey") @default(uuid())
+  email        String   @unique(map: "User_email_key")
   passwordHash String
-  name         String
+  name         String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@map("users")
 }
 
-// Product model for store items
 model Product {
-  id          String   @id @default(uuid())
-  name        String
-  description String   @db.Text
-  price       Int      // Price in cents (e.g., 999 = $9.99)
-  imageUrl    String
-  category    String?  // Product category for filtering
-  isAvailable Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Link to COGS recipe (for profit tracking)
+  id           String      @id(map: "Product_pkey") @default(uuid())
+  name         String
+  description  String
+  price        Int         @default(0)
+  imageUrl     String      @default("")
+  isAvailable  Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  category     String?
   cogsRecipeId String?     @unique
-  cogsRecipe   CogsRecipe? @relation(fields: [cogsRecipeId], references: [id], onDelete: SetNull)
+  orderItems   OrderItem[]
+  cogsRecipe   CogsRecipe? @relation(fields: [cogsRecipeId], references: [id])
 
-  orderItems OrderItem[]
-
-  @@index([isAvailable])
   @@index([category])
   @@map("products")
+}
+
+model Order {
+  id                    String            @id @default(uuid())
+  customerName          String
+  customerEmail         String
+  customerPhone         String
+  shippingAddress       Json?
+  fulfillmentMethod     FulfillmentMethod
+  shippingCost          Int?
+  subtotal              Int
+  total                 Int
+  paymentStatus         PaymentStatus     @default(PENDING)
+  fulfillmentStatus     FulfillmentStatus @default(PENDING)
+  stripePaymentIntentId String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  proceedsChoice        String?
+  seedCount             Int?
+  extraSupportAmount    Int?
+  items                 OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String  @id @default(uuid())
+  orderId     String
+  productId   String
+  productName String
+  quantity    Int
+  unitPrice   Int
+  lineTotal   Int
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "OrderItem_orderId_fkey")
+  product     Product @relation(fields: [productId], references: [id], map: "OrderItem_productId_fkey")
+
+  @@map("order_items")
+}
+
+model Ingredient {
+  id                String                 @id @default(uuid())
+  name              String
+  unitCost          Float                  // Cost per recipe unit (auto-calculated or manual)
+  unit              String                 // Recipe unit (tbsp, cup, oz, each, etc.)
+  source            IngredientSource       @default(PANTRY)
+  category          String?
+  notes             String?
+  // Purchase tracking (what you buy at the store)
+  purchaseSize      Float?                 // e.g., 2 for "2 lb bag"
+  purchaseUnit      String?                // e.g., "lb", "bag", "oz"
+  purchaseCost      Float?                 // Total cost of purchase, e.g., $4.00
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  recipeIngredients CogsRecipeIngredient[]
+  crops             Crop[]
+
+  @@index([name])
+  @@index([category])
+  @@index([source])
+  @@map("ingredients")
+}
+
+model CogsRecipe {
+  id            String                 @id @default(uuid())
+  name          String
+  description   String?
+  containerType String
+  containerCost Float                  @default(0)
+  labelCost     Float                  @default(0.20)
+  energyCost    Float                  @default(0.30)
+  retailPrice   Float
+  notes         String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  status        RecipeStatus           @default(IDEA)
+  ingredients   CogsRecipeIngredient[]
+  product       Product?
+
+  @@index([status])
+  @@map("cogs_recipes")
+}
+
+model CogsRecipeIngredient {
+  id           String     @id @default(uuid())
+  recipeId     String
+  ingredientId String
+  quantity     Float
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  recipe       CogsRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, ingredientId])
+  @@map("cogs_recipe_ingredients")
+}
+
+model Crop {
+  id                String      @id @default(uuid())
+  name              String
+  type              CropType    @default(ANNUAL)
+  seedStartWeek     Int?
+  seedStartNotes    String?
+  plantOutWeekStart Int?
+  plantOutWeekEnd   Int?
+  directSow         Boolean     @default(false)
+  harvestStart      Int
+  harvestEnd        Int
+  peakStart         Int?
+  peakEnd           Int?
+  color             String      @default("#4A7C59")
+  notes             String?
+  ingredientId      String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  plantCount        Int         @default(0)
+  yieldPerUnit      Decimal?    @db.Decimal(10, 2)
+  yieldUnit         String      @default("lbs") @db.VarChar(50)
+  lastYearYield     Decimal?    @db.Decimal(10, 2)
+  ingredient        Ingredient? @relation(fields: [ingredientId], references: [id])
+
+  @@index([harvestStart])
+  @@map("crops")
+}
+
+model SeasonalTask {
+  id          String    @id @default(uuid())
+  title       String
+  month       Int
+  weekOfMonth Int?
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  year        Int
+  notes       String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  @@index([year, month])
+  @@index([isCompleted])
+  @@map("seasonal_tasks")
 }
 
 enum FulfillmentMethod {
@@ -62,112 +191,11 @@ enum FulfillmentStatus {
   FULFILLED
 }
 
-// Order model for customer purchases
-model Order {
-  id                    String            @id @default(uuid())
-  customerName          String
-  customerEmail         String
-  customerPhone         String
-  shippingAddress       Json?             // { street, city, state, zipCode }
-  fulfillmentMethod     FulfillmentMethod
-  shippingCost          Int?              // In cents (flat $10.00 = 1000)
-  subtotal              Int               // In cents
-  total                 Int               // In cents
-  paymentStatus         PaymentStatus     @default(PENDING)
-  fulfillmentStatus     FulfillmentStatus @default(PENDING)
-  stripePaymentIntentId String?           @unique
-  // Seeds of Kindness - customer's chosen cause and contribution
-  proceedsChoice        String?           // Which cause they selected
-  seedCount             Int?              // Number of "seeds" sown (calculated from order)
-  extraSupportAmount    Int?              // Additional donation in cents
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-
-  items OrderItem[]
-
-  @@index([fulfillmentStatus])
-  @@index([createdAt])
-  @@map("orders")
+enum RecipeStatus {
+  IDEA
+  READY
+  PUBLISHED
 }
-
-// OrderItem model for products in an order
-model OrderItem {
-  id          String @id @default(uuid())
-  orderId     String
-  productId   String
-  productName String // Snapshot at time of order
-  quantity    Int
-  unitPrice   Int    // Price per unit in cents (snapshot)
-  lineTotal   Int    // quantity * unitPrice
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
-
-  @@index([orderId])
-  @@map("order_items")
-}
-
-// ============================================
-// COGS Calculator Models (Planning Tools)
-// ============================================
-
-// Master ingredient library with unit costs
-model Ingredient {
-  id           String   @id @default(uuid())
-  name         String
-  unitCost     Float    // Cost per unit (e.g., $0.60 per lb)
-  unit         String   // "lb", "oz", "each", "qt", "cup", etc.
-  isFromGarden Boolean  @default(false) // Garden items = $0 cost
-  category     String?  // "Garden", "Pantry", "Packaging"
-  notes        String?  // Optional notes
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  recipeIngredients CogsRecipeIngredient[]
-  crops             Crop[]
-
-  @@index([name])
-  @@index([category])
-  @@map("ingredients")
-}
-
-// Recipe/Product cost breakdown
-model CogsRecipe {
-  id            String   @id @default(uuid())
-  name          String
-  description   String?
-  containerType String   // "quart jar", "pint jar", "8oz jar", "4oz bag", etc.
-  containerCost Float    @default(0) // Cost of jar/container + lid
-  labelCost     Float    @default(0.20) // Cost of label
-  energyCost    Float    @default(0.30) // Energy/water overhead per unit
-  retailPrice   Float    // Suggested retail price
-  notes         String?  // Optional notes about the recipe
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  ingredients CogsRecipeIngredient[]
-  product     Product? // Linked store product (if published)
-
-  @@map("cogs_recipes")
-}
-
-// Junction table for recipe ingredients
-model CogsRecipeIngredient {
-  id           String @id @default(uuid())
-  recipeId     String
-  ingredientId String
-  quantity     Float  // Amount of ingredient used
-  
-  recipe     CogsRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
-
-  @@unique([recipeId, ingredientId])
-  @@map("cogs_recipe_ingredients")
-}
-
-// ============================================
-// Seasonal Planner Models
-// ============================================
 
 enum CropType {
   ANNUAL
@@ -175,55 +203,8 @@ enum CropType {
   BIENNIAL
 }
 
-// Garden crops with growing cycle data (Portland, OR Zone 8b)
-model Crop {
-  id              String   @id @default(uuid())
-  name            String
-  type            CropType @default(ANNUAL)
-  
-  // Planting Phase (for annuals/biennials)
-  seedStartWeek   Int?     // Week to start indoors (null = direct sow or perennial)
-  seedStartNotes  String?  // e.g., "8 weeks before last frost"
-  plantOutWeekStart Int?   // First week to plant/transplant outdoors
-  plantOutWeekEnd   Int?   // Last week to plant outdoors
-  directSow       Boolean  @default(false) // true = don't start indoors
-  
-  // Harvest Phase
-  harvestStart    Int      // Week of year (1-52)
-  harvestEnd      Int      // Week of year (1-52)
-  peakStart       Int?     // Optional peak period start
-  peakEnd         Int?     // Optional peak period end
-  
-  // Display
-  color           String   @default("#4A7C59")
-  notes           String?
-  
-  // Link to COGS ingredient
-  ingredientId    String?
-  ingredient      Ingredient? @relation(fields: [ingredientId], references: [id], onDelete: SetNull)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([harvestStart])
-  @@map("crops")
-}
-
-// Seasonal production tasks/checklist
-model SeasonalTask {
-  id          String    @id @default(uuid())
-  title       String
-  month       Int       // 1-12
-  weekOfMonth Int?      // Optional: 1-4 for specific week
-  isCompleted Boolean   @default(false)
-  completedAt DateTime?
-  year        Int       // Year this task/completion applies to
-  notes       String?
-  sortOrder   Int       @default(0) // For ordering within a month
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([year, month])
-  @@index([isCompleted])
-  @@map("seasonal_tasks")
+enum IngredientSource {
+  GARDEN    // Grown in the garden, linked to a Crop
+  PANTRY    // Store-bought pantry staples (sugar, spices, etc.)
+  PACKAGING // Jars, lids, labels, bags
 }

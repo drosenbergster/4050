@@ -53,9 +53,13 @@ export async function POST(request: NextRequest) {
         name: data.name,
         unitCost: data.unitCost,
         unit: data.unit,
-        isFromGarden: data.isFromGarden || false,
+        source: data.source || 'PANTRY',
         category: data.category || 'Other',
         notes: data.notes || null,
+        // Purchase tracking fields
+        purchaseSize: data.purchaseSize || null,
+        purchaseUnit: data.purchaseUnit || null,
+        purchaseCost: data.purchaseCost || null,
       }
     });
 

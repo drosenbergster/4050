@@ -97,10 +97,10 @@ export default function DeleteConfirmModal({
                                 </div>
                                 <div>
                                     <p className="font-medium text-red-800">
-                                        This will permanently remove "{product.name}" from your shop.
+                                        This will permanently remove &ldquo;{product.name}&rdquo; from your shop.
                                     </p>
                                     <p className="text-sm text-red-600 mt-1">
-                                        This can't be undone.
+                                        This can&apos;t be undone.
                                     </p>
                                 </div>
                             </div>

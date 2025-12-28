@@ -18,7 +18,6 @@ import {
   ChevronUp,
   Package,
   Printer,
-  Save,
 } from 'lucide-react';
 
 // Types
@@ -38,6 +37,11 @@ interface Crop {
   color: string;
   notes: string | null;
   ingredientId: string | null;
+  // Yield tracking
+  plantCount: number;
+  yieldPerUnit: number | null;
+  yieldUnit: string;
+  lastYearYield: number | null;
   ingredient?: {
     id: string;
     name: string;
@@ -148,11 +152,6 @@ function sortCropsByUrgency(crops: Crop[], currentWeek: number): Crop[] {
   });
 }
 
-function weekToMonth(week: number): number {
-  // Approximate: week 1-4 = Jan, week 5-8 = Feb, etc.
-  return Math.min(11, Math.floor((week - 1) / 4.33));
-}
-
 function getCurrentWeek(): number {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 1);
@@ -172,13 +171,14 @@ function weekToDate(week: number): string {
   return `${months[month]} ${day}`;
 }
 
-export default function SeasonalPlanner() {
+type GardenPlannerTab = 'calendar' | 'harvest';
+
+export default function GardenPlanner() {
   const [crops, setCrops] = useState<Crop[]>([]);
   const [tasks, setTasks] = useState<SeasonalTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<GardenPlannerTab>('calendar');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [viewMode, setViewMode] = useState<'year' | 'month'>('year');
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedCrop, setSelectedCrop] = useState<Crop | null>(null);
   const [expandedMonth, setExpandedMonth] = useState<number | null>(new Date().getMonth());
   const [editingCrop, setEditingCrop] = useState<Crop | null>(null);
@@ -328,6 +328,55 @@ export default function SeasonalPlanner() {
     });
   };
 
+  // Calculate harvest totals for the Harvest Calculator
+  const harvestTotals = useMemo(() => {
+    return crops.map(crop => {
+      const expectedYield = crop.plantCount * (Number(crop.yieldPerUnit) || 0);
+      const recipes = crop.ingredient?.recipeIngredients?.map(ri => ri.recipe) || [];
+      return {
+        ...crop,
+        expectedYield,
+        recipes
+      };
+    }).filter(c => c.plantCount > 0);
+  }, [crops]);
+
+  const totalExpectedYield = useMemo(() => {
+    return harvestTotals.reduce((sum, crop) => sum + crop.expectedYield, 0);
+  }, [harvestTotals]);
+
+  // Update plant count
+  const updatePlantCount = async (cropId: string, count: number) => {
+    try {
+      const res = await fetch(`/api/admin/crops/${cropId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plantCount: count })
+      });
+      if (res.ok) {
+        setCrops(prev => prev.map(c => c.id === cropId ? { ...c, plantCount: count } : c));
+      }
+    } catch (error) {
+      console.error('Failed to update plant count:', error);
+    }
+  };
+
+  // Update yield per unit
+  const updateYieldPerUnit = async (cropId: string, yieldAmount: number) => {
+    try {
+      const res = await fetch(`/api/admin/crops/${cropId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ yieldPerUnit: yieldAmount })
+      });
+      if (res.ok) {
+        setCrops(prev => prev.map(c => c.id === cropId ? { ...c, yieldPerUnit: yieldAmount } : c));
+      }
+    } catch (error) {
+      console.error('Failed to update yield:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -343,7 +392,7 @@ export default function SeasonalPlanner() {
         <div>
           <h2 className="text-xl font-serif font-bold text-[#5C4A3D] flex items-center gap-2">
             <Sprout size={24} className="text-[#4A7C59]" />
-            Seasonal Planner
+            Garden Planner
           </h2>
           <p className="text-sm text-gray-500 mt-1">
             Portland, OR (Zone 8b) • {crops.length} crops • {tasks.length} tasks for {selectedYear}
@@ -352,20 +401,24 @@ export default function SeasonalPlanner() {
         
         <div className="flex items-center gap-3">
           {/* Action Buttons */}
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-[#5C4A3D] hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <Printer size={18} />
-            Print
-          </button>
-          <button
-            onClick={() => setIsAddingCrop(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-[#4A7C59] text-white rounded-lg hover:bg-[#3d6649] transition-colors"
-          >
-            <Plus size={18} />
-            Add Crop
-          </button>
+          {activeTab === 'calendar' && (
+            <>
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-[#5C4A3D] hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Printer size={18} />
+                Print
+              </button>
+              <button
+                onClick={() => setIsAddingCrop(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-[#4A7C59] text-white rounded-lg hover:bg-[#3d6649] transition-colors"
+              >
+                <Plus size={18} />
+                Add Crop
+              </button>
+            </>
+          )}
           
           {/* Year Selector */}
           <div className="flex items-center gap-1 ml-2 border-l pl-4 border-gray-200">
@@ -387,16 +440,50 @@ export default function SeasonalPlanner() {
           </div>
         </div>
       </div>
-      
-      {/* Print Header - Only visible when printing */}
-      <div className="hidden print-only mb-6">
-        <h1 className="text-2xl font-serif font-bold text-[#5C4A3D]">
-          🌱 Heritage Orchard - {selectedYear} Seasonal Planner
-        </h1>
-        <p className="text-sm text-gray-500">Portland, OR (Zone 8b) • Printed: {new Date().toLocaleDateString()}</p>
-      </div>
 
-      {/* Calendar View */}
+      {/* Tab Navigation */}
+      <div className="border-b border-[#E5DDD3] no-print">
+        <nav className="flex gap-6" aria-label="Garden Planner tabs">
+          <button
+            onClick={() => setActiveTab('calendar')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'calendar'
+                ? 'border-[#4A7C59] text-[#4A7C59]'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Calendar size={16} />
+              Growing Calendar
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('harvest')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'harvest'
+                ? 'border-[#4A7C59] text-[#4A7C59]'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Apple size={16} />
+              Potential Harvest
+            </div>
+          </button>
+        </nav>
+      </div>
+      
+      {activeTab === 'calendar' && (
+        <>
+          {/* Print Header - Only visible when printing */}
+          <div className="hidden print-only mb-6">
+            <h1 className="text-2xl font-serif font-bold text-[#5C4A3D]">
+              🌱 Heritage Orchard - {selectedYear} Garden Calendar
+            </h1>
+            <p className="text-sm text-gray-500">Portland, OR (Zone 8b) • Printed: {new Date().toLocaleDateString()}</p>
+          </div>
+
+          {/* Calendar View */}
       <div className="bg-white rounded-xl border border-[#E5DDD3] overflow-hidden">
         {/* Month Headers */}
         <div className="grid grid-cols-12 border-b border-[#E5DDD3] bg-[#FDF8F3]">
@@ -574,6 +661,177 @@ export default function SeasonalPlanner() {
           })}
         </div>
       </div>
+        </>
+      )}
+
+      {/* Potential Harvest Tab */}
+      {activeTab === 'harvest' && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="bg-white rounded-xl border border-[#E5DDD3] p-6">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-serif font-bold text-[#5C4A3D] flex items-center gap-2">
+                  <Apple size={20} className="text-[#4A7C59]" />
+                  What Could the Garden Give Us?
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Adjust your counts and yields to explore what&apos;s possible
+                </p>
+              </div>
+              {totalExpectedYield > 0 && (
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-[#4A7C59]">~{totalExpectedYield.toFixed(0)} lbs</div>
+                  <div className="text-xs text-gray-500">potential harvest</div>
+                </div>
+              )}
+            </div>
+
+            {/* Crop Yield Cards */}
+            <div className="space-y-2">
+              {crops.map(crop => {
+                // Determine the right label based on crop type and name
+                const isTree = ['Apples', 'Plums'].includes(crop.name);
+                const isBush = ['Raspberries', 'Blueberries'].includes(crop.name);
+                const unitLabel = isTree ? 'trees' : isBush ? 'bushes' : 'plants';
+                const expectedYield = crop.plantCount > 0 && crop.yieldPerUnit 
+                  ? crop.plantCount * Number(crop.yieldPerUnit) 
+                  : 0;
+                
+                return (
+                  <div 
+                    key={crop.id}
+                    className="bg-[#FDF8F3] rounded-xl p-4 hover:bg-[#F5EDE4] transition-colors"
+                  >
+                    {/* Top Row: Crop Name + Result */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="w-3 h-3 rounded-full flex-shrink-0" 
+                          style={{ backgroundColor: crop.color }}
+                        />
+                        <span className="font-medium text-[#5C4A3D]">{crop.name}</span>
+                      </div>
+                      {expectedYield > 0 ? (
+                        <span className="font-bold text-[#4A7C59] text-lg">
+                          ~{expectedYield.toFixed(0)} {crop.yieldUnit}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-sm">—</span>
+                      )}
+                    </div>
+
+                    {/* Bottom Row: Inputs */}
+                    <div className="flex items-center gap-3 text-sm">
+                      {/* Plant Count */}
+                      <div className="flex items-center gap-1.5 bg-white rounded-lg px-3 py-1.5 border border-[#E5DDD3]">
+                        <input
+                          type="number"
+                          min="0"
+                          value={crop.plantCount}
+                          onChange={(e) => updatePlantCount(crop.id, parseInt(e.target.value) || 0)}
+                          className="w-12 text-center font-bold text-[#5C4A3D] bg-transparent outline-none"
+                        />
+                        <span className="text-gray-400 text-xs">{unitLabel}</span>
+                      </div>
+
+                      <span className="text-gray-300">×</span>
+
+                      {/* Yield Per Unit */}
+                      <div className="flex items-center gap-1.5 bg-white rounded-lg px-3 py-1.5 border border-[#E5DDD3]">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.25"
+                          value={crop.yieldPerUnit || ''}
+                          onChange={(e) => updateYieldPerUnit(crop.id, parseFloat(e.target.value) || 0)}
+                          className="w-12 text-center text-[#5C4A3D] bg-transparent outline-none"
+                          placeholder="?"
+                        />
+                        <span className="text-gray-400 text-xs">{crop.yieldUnit}/ea</span>
+                      </div>
+
+                      {/* Last Year Reference */}
+                      {crop.lastYearYield && (
+                        <span className="text-xs text-gray-400 italic ml-auto">
+                          Last year: {crop.lastYearYield} {crop.yieldUnit}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* What You Could Make Section */}
+          {harvestTotals.some(c => c.expectedYield > 0 && c.recipes.length > 0) && (
+            <div className="bg-white rounded-xl border border-[#E5DDD3] p-6">
+              <h3 className="text-lg font-serif font-bold text-[#5C4A3D] flex items-center gap-2 mb-4">
+                <Package size={20} className="text-[#4A7C59]" />
+                What You Could Make
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Based on your expected harvest and connected recipes
+              </p>
+
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {harvestTotals
+                  .filter(c => c.expectedYield > 0 && c.recipes.length > 0)
+                  .map(crop => (
+                    <div key={crop.id} className="bg-[#FDF8F3] rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: crop.color }}
+                        />
+                        <span className="font-medium text-[#5C4A3D]">{crop.name}</span>
+                        <span className="text-xs text-[#4A7C59] ml-auto">
+                          {crop.expectedYield.toFixed(0)} {crop.yieldUnit}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {crop.recipes.map(recipe => (
+                          <div 
+                            key={recipe.id}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <span className="text-gray-600">🫙 {recipe.name}</span>
+                            <span className="text-xs text-gray-500">
+                              ${recipe.retailPrice}/jar
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {harvestTotals.filter(c => c.expectedYield > 0 && c.recipes.length === 0).length > 0 && (
+                <div className="mt-4 pt-4 border-t border-[#E5DDD3]">
+                  <p className="text-xs text-gray-500">
+                    <strong>Tip:</strong> Connect more crops to ingredients in the Cookbook to see recipe possibilities.
+                    Crops without recipes: {harvestTotals.filter(c => c.expectedYield > 0 && c.recipes.length === 0).map(c => c.name).join(', ')}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {harvestTotals.every(c => c.expectedYield === 0) && (
+            <div className="bg-white rounded-xl border border-[#E5DDD3] p-12 text-center">
+              <Apple size={48} className="mx-auto text-gray-300 mb-4" />
+              <h3 className="text-lg font-serif font-bold text-[#5C4A3D] mb-2">
+                No harvest planned yet
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Set your plant counts above to see what your garden could produce
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Crop Detail Modal */}
       {selectedCrop && (

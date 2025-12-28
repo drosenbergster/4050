@@ -6,7 +6,6 @@ import { authOptions } from '@/lib/server/auth';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// Check if request is from localhost in dev mode (for dev admin page)
 async function isDevAuthorized(): Promise<boolean> {
   if (!isDev) return false;
   const headersList = await headers();
@@ -27,8 +26,9 @@ export async function GET(
     }
 
     const { id } = await params;
+
     const ingredient = await prisma.ingredient.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!ingredient) {
@@ -57,16 +57,24 @@ export async function PATCH(
     const { id } = await params;
     const data = await request.json();
 
+    // Build update data, only including provided fields
+    const updateData: Record<string, unknown> = {};
+    
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.unitCost !== undefined) updateData.unitCost = data.unitCost;
+    if (data.unit !== undefined) updateData.unit = data.unit;
+    if (data.source !== undefined) updateData.source = data.source;
+    if (data.category !== undefined) updateData.category = data.category;
+    if (data.notes !== undefined) updateData.notes = data.notes;
+    
+    // Purchase tracking fields
+    if (data.purchaseSize !== undefined) updateData.purchaseSize = data.purchaseSize;
+    if (data.purchaseUnit !== undefined) updateData.purchaseUnit = data.purchaseUnit;
+    if (data.purchaseCost !== undefined) updateData.purchaseCost = data.purchaseCost;
+
     const ingredient = await prisma.ingredient.update({
       where: { id },
-      data: {
-        name: data.name,
-        unitCost: data.unitCost,
-        unit: data.unit,
-        isFromGarden: data.isFromGarden,
-        category: data.category,
-        notes: data.notes,
-      }
+      data: updateData,
     });
 
     return NextResponse.json(ingredient);
@@ -89,8 +97,9 @@ export async function DELETE(
     }
 
     const { id } = await params;
+
     await prisma.ingredient.delete({
-      where: { id }
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

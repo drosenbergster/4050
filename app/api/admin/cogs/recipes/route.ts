@@ -15,7 +15,8 @@ async function isDevAuthorized(): Promise<boolean> {
 }
 
 // GET all recipes with ingredients
-export async function GET() {
+// Query params: ?status=IDEA|READY|PUBLISHED (optional filter)
+export async function GET(request: NextRequest) {
   try {
     const devAuth = await isDevAuthorized();
     const session = await getServerSession(authOptions);
@@ -23,7 +24,16 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Parse optional status filter
+    const { searchParams } = new URL(request.url);
+    const statusFilter = searchParams.get('status');
+    
+    const whereClause = statusFilter 
+      ? { status: statusFilter as 'IDEA' | 'READY' | 'PUBLISHED' }
+      : {};
+
     const recipes = await prisma.cogsRecipe.findMany({
+      where: whereClause,
       include: {
         ingredients: {
           include: {
@@ -34,7 +44,11 @@ export async function GET() {
           select: {
             id: true,
             name: true,
-            isAvailable: true
+            description: true,
+            imageUrl: true,
+            category: true,
+            isAvailable: true,
+            price: true
           }
         }
       },
@@ -69,6 +83,7 @@ export async function POST(request: NextRequest) {
         energyCost: data.energyCost || 0.30,
         retailPrice: data.retailPrice,
         notes: data.notes || null,
+        status: data.status || 'IDEA', // Default to IDEA for new recipes
         ingredients: {
           create: data.ingredients?.map((ing: { ingredientId: string; quantity: number }) => ({
             ingredientId: ing.ingredientId,
@@ -81,7 +96,8 @@ export async function POST(request: NextRequest) {
           include: {
             ingredient: true
           }
-        }
+        },
+        product: true
       }
     });
 

@@ -69,3 +69,4 @@ ALTER TABLE "crops"
     ADD CONSTRAINT "crops_ingredientId_fkey" 
     FOREIGN KEY ("ingredientId") REFERENCES "ingredients"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
+

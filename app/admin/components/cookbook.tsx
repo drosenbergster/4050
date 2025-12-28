@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { getCommonPurchaseUnits } from '@/lib/unit-conversions';
 import { 
-  Calculator, 
+  BookOpen,
   Plus, 
   Trash2, 
   Edit3, 
@@ -10,26 +11,33 @@ import {
   ChevronUp,
   Leaf,
   Package,
-  DollarSign,
-  Percent,
   X,
   Save,
-  Sparkles,
   ShoppingBag,
-  Check,
+  ImagePlus,
+  ArrowRight,
   ExternalLink,
-  ImagePlus
+  Beaker,
+  Tag,
+  PackageCheck,
+  PackageX
 } from 'lucide-react';
 
 // Types
+type IngredientSource = 'GARDEN' | 'PANTRY' | 'PACKAGING';
+
 interface Ingredient {
   id: string;
   name: string;
   unitCost: number;
   unit: string;
-  isFromGarden: boolean;
+  source: IngredientSource;
   category: string | null;
   notes: string | null;
+  // Purchase tracking
+  purchaseSize: number | null;
+  purchaseUnit: string | null;
+  purchaseCost: number | null;
 }
 
 interface RecipeIngredient {
@@ -38,6 +46,8 @@ interface RecipeIngredient {
   quantity: number;
   ingredient: Ingredient;
 }
+
+type RecipeStatus = 'IDEA' | 'READY' | 'PUBLISHED';
 
 interface Recipe {
   id: string;
@@ -49,18 +59,26 @@ interface Recipe {
   energyCost: number;
   retailPrice: number;
   notes: string | null;
+  status: RecipeStatus;
   ingredients: RecipeIngredient[];
   product?: {
     id: string;
     name: string;
+    description: string;
+    imageUrl: string;
+    category: string | null;
     isAvailable: boolean;
+    price: number;
   } | null;
 }
+
+type CookbookTab = 'ideas' | 'ready' | 'published';
 
 // Calculate costs for a recipe
 function calculateRecipeCosts(recipe: Recipe) {
   const ingredientsCost = recipe.ingredients.reduce((sum, ri) => {
-    const cost = ri.ingredient.isFromGarden ? 0 : ri.ingredient.unitCost * ri.quantity;
+    // Garden ingredients are "free" - they come from the garden!
+    const cost = ri.ingredient.source === 'GARDEN' ? 0 : ri.ingredient.unitCost * ri.quantity;
     return sum + cost;
   }, 0);
   
@@ -84,19 +102,33 @@ function getMarginStyle(margin: number): { color: string; bg: string; label: str
   return { color: 'text-red-600', bg: 'bg-red-50', label: 'Review' };
 }
 
-export default function CogsCalculator() {
+export default function Cookbook() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<CookbookTab>('ideas');
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [batchSizes, setBatchSizes] = useState<Record<string, number>>({});
   const [showIngredients, setShowIngredients] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<{ unitCost: number; unit: string }>({ unitCost: 0, unit: '' });
+  const [editValues, setEditValues] = useState<{ 
+    unitCost: number; 
+    unit: string;
+    purchaseSize: number | null;
+    purchaseUnit: string | null;
+    purchaseCost: number | null;
+  }>({ unitCost: 0, unit: '', purchaseSize: null, purchaseUnit: null, purchaseCost: null });
   const [isAddingIngredient, setIsAddingIngredient] = useState(false);
   const [publishingRecipe, setPublishingRecipe] = useState<Recipe | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [productEdits, setProductEdits] = useState<{
+    name: string;
+    description: string;
+    imageUrl: string;
+    category: string;
+  }>({ name: '', description: '', imageUrl: '', category: '' });
 
   // Fetch data on mount
   useEffect(() => {
@@ -137,14 +169,35 @@ export default function CogsCalculator() {
     return groups;
   }, [ingredients]);
 
-  // Sort recipes by margin
-  const sortedRecipes = useMemo(() => {
-    return [...recipes].sort((a, b) => {
-      const marginA = calculateRecipeCosts(a).margin;
-      const marginB = calculateRecipeCosts(b).margin;
-      return marginB - marginA;
+  // Count recipes by status
+  const recipeCounts = useMemo(() => {
+    const counts = { ideas: 0, ready: 0, published: 0 };
+    recipes.forEach(r => {
+      const status = r.status || 'IDEA';
+      if (status === 'IDEA') counts.ideas++;
+      else if (status === 'READY') counts.ready++;
+      else if (status === 'PUBLISHED') counts.published++;
     });
+    return counts;
   }, [recipes]);
+
+  // Filter and sort recipes by active tab
+  const filteredRecipes = useMemo(() => {
+    const statusMap: Record<CookbookTab, RecipeStatus> = {
+      ideas: 'IDEA',
+      ready: 'READY', 
+      published: 'PUBLISHED'
+    };
+    const targetStatus = statusMap[activeTab];
+    
+    return recipes
+      .filter(r => (r.status || 'IDEA') === targetStatus)
+      .sort((a, b) => {
+        const marginA = calculateRecipeCosts(a).margin;
+        const marginB = calculateRecipeCosts(b).margin;
+        return marginB - marginA;
+      });
+  }, [recipes, activeTab]);
 
   const handleDeleteRecipe = async (id: string) => {
     if (!confirm('Delete this recipe?')) return;
@@ -161,7 +214,13 @@ export default function CogsCalculator() {
 
   const startEditingIngredient = (ing: Ingredient) => {
     setEditingIngredient(ing.id);
-    setEditValues({ unitCost: ing.unitCost, unit: ing.unit });
+    setEditValues({ 
+      unitCost: ing.unitCost, 
+      unit: ing.unit,
+      purchaseSize: ing.purchaseSize,
+      purchaseUnit: ing.purchaseUnit,
+      purchaseCost: ing.purchaseCost,
+    });
   };
 
   const handleSaveIngredient = async (id: string) => {
@@ -190,7 +249,7 @@ export default function CogsCalculator() {
     name: string;
     unitCost: number;
     unit: string;
-    isFromGarden: boolean;
+    source: IngredientSource;
     category: string;
   }) => {
     try {
@@ -231,17 +290,40 @@ export default function CogsCalculator() {
     );
   }
 
+  // Handle moving recipe to different status
+  const handleMoveRecipe = async (recipeId: string, newStatus: RecipeStatus) => {
+    try {
+      const res = await fetch(`/api/admin/cogs/recipes/${recipeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        await fetchData();
+      }
+    } catch (error) {
+      console.error('Failed to update recipe status:', error);
+    }
+  };
+
+  // Tab configuration
+  const tabs: { id: CookbookTab; label: string; count: number }[] = [
+    { id: 'ideas', label: '💡 Ideas', count: recipeCounts.ideas },
+    { id: 'ready', label: '✨ Ready', count: recipeCounts.ready },
+    { id: 'published', label: '🏪 Selling', count: recipeCounts.published },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-serif font-bold text-[#5C4A3D] flex items-center gap-2">
-            <Calculator size={24} className="text-[#4A7C59]" />
-            Recipe Costing
+            <BookOpen size={24} className="text-[#4A7C59]" />
+            Cookbook
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            See what it costs to make each product and how much you&apos;ll earn
+            Your recipes, from idea to shelf
           </p>
         </div>
         <div className="flex gap-2">
@@ -256,9 +338,40 @@ export default function CogsCalculator() {
             className="px-4 py-2 text-sm font-medium text-white bg-[#4A7C59] rounded-lg hover:bg-[#3d6549] transition-colors flex items-center gap-2"
           >
             <Plus size={18} />
-            New Recipe
+            New Idea
           </button>
         </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="border-b border-[#E5DDD3]">
+        <nav className="flex gap-8" aria-label="Cookbook tabs">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
+                activeTab === tab.id
+                  ? 'text-[#4A7C59]'
+                  : 'text-gray-500 hover:text-[#5C4A3D]'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                {tab.label}
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  activeTab === tab.id 
+                    ? 'bg-[#E8F0EA] text-[#4A7C59]' 
+                    : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {tab.count}
+                </span>
+              </span>
+              {activeTab === tab.id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4A7C59]" />
+              )}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* Ingredients Panel */}
@@ -267,13 +380,13 @@ export default function CogsCalculator() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-serif font-bold text-[#5C4A3D]">Ingredient Library</h3>
             <div className="flex items-center gap-4">
-              <p className="text-xs text-gray-400">Click any ingredient to edit</p>
+              <p className="text-xs text-gray-400">Click to edit</p>
               <button
                 onClick={() => setIsAddingIngredient(true)}
                 className="px-3 py-1.5 text-sm font-medium text-[#4A7C59] border border-[#4A7C59] rounded-lg hover:bg-[#E8F0EA] transition-colors flex items-center gap-1"
               >
                 <Plus size={14} />
-                Add Ingredient
+                Add
               </button>
             </div>
           </div>
@@ -281,99 +394,117 @@ export default function CogsCalculator() {
             {Object.entries(groupedIngredients).map(([category, ings]) => (
               <div key={category}>
                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                  {category}
+                  {category === 'Garden' ? 'Produce' : category}
                 </h4>
-                <ul className="space-y-1">
+                <ul className="space-y-0.5">
                   {ings.map(ing => (
-                    <li key={ing.id} className="text-sm py-1">
-                      {editingIngredient === ing.id ? (
-                        /* Editing Mode */
-                        <div className="flex items-center gap-2 bg-[#FDF8F3] p-2 rounded-lg -mx-2">
-                          <span className="flex items-center gap-1 flex-1 min-w-0">
-                            {ing.isFromGarden && <Leaf size={14} className="text-green-500 flex-shrink-0" />}
-                            <span className="truncate">{ing.name}</span>
-                          </span>
-                          {ing.isFromGarden ? (
-                            /* Garden item - just edit unit */
-                            <div className="flex items-center gap-1">
-                              <span className="text-gray-400 text-xs">per</span>
-                              <input
-                                type="text"
-                                value={editValues.unit}
-                                onChange={(e) => setEditValues({ ...editValues, unit: e.target.value })}
-                                className="w-14 px-1 py-0.5 border border-[#E5DDD3] rounded text-sm"
-                                autoFocus
-                              />
-                            </div>
-                          ) : (
-                            /* Purchased item - edit cost and unit */
-                            <div className="flex items-center gap-1">
-                              <span className="text-gray-400">$</span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={editValues.unitCost}
-                                onChange={(e) => setEditValues({ ...editValues, unitCost: parseFloat(e.target.value) || 0 })}
-                                className="w-16 px-1 py-0.5 border border-[#E5DDD3] rounded text-sm text-right"
-                                autoFocus
-                              />
-                              <span className="text-gray-400">/</span>
-                              <input
-                                type="text"
-                                value={editValues.unit}
-                                onChange={(e) => setEditValues({ ...editValues, unit: e.target.value })}
-                                className="w-14 px-1 py-0.5 border border-[#E5DDD3] rounded text-sm"
-                              />
-                            </div>
-                          )}
-                          <button
-                            onClick={() => handleSaveIngredient(ing.id)}
-                            className="p-1 text-green-600 hover:bg-green-50 rounded"
-                            title="Save"
-                          >
-                            <Save size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteIngredient(ing.id)}
-                            className="p-1 text-red-400 hover:bg-red-50 rounded"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => setEditingIngredient(null)}
-                            className="p-1 text-gray-400 hover:bg-gray-100 rounded"
-                            title="Cancel"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ) : (
-                        /* Display Mode */
-                        <div 
-                          className="flex items-center justify-between cursor-pointer hover:bg-[#FDF8F3] rounded-lg px-2 py-1 -mx-2 transition-colors group"
-                          onClick={() => startEditingIngredient(ing)}
-                        >
-                          <span className="flex items-center gap-2">
-                            {ing.isFromGarden && <Leaf size={14} className="text-green-500" />}
-                            {ing.name}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            {ing.isFromGarden ? (
-                              <>
-                                <span className="text-gray-400 text-sm">per {ing.unit}</span>
-                                <Edit3 size={12} className="text-gray-300 group-hover:text-[#4A7C59] transition-colors" />
-                              </>
-                            ) : (
-                              <>
-                                <span className="text-gray-500">{formatCurrency(ing.unitCost)}/{ing.unit}</span>
-                                <Edit3 size={12} className="text-gray-300 group-hover:text-[#4A7C59] transition-colors" />
-                              </>
-                            )}
-                          </span>
-                        </div>
-                      )}
+                    <li key={ing.id} className="text-sm">
+{editingIngredient === ing.id ? (
+                                        /* Editing Mode */
+                                        <div className="bg-[#FDF8F3] p-3 rounded-lg -mx-2 space-y-3">
+                                          <div className="flex items-center justify-between">
+                                            <span className="font-medium text-[#5C4A3D]">
+                                              {ing.name}
+                                            </span>
+                                            <div className="flex gap-1">
+                                              <button
+                                                onClick={() => handleSaveIngredient(ing.id)}
+                                                className="p-1.5 text-green-600 hover:bg-green-50 rounded"
+                                                title="Save"
+                                              >
+                                                <Save size={14} />
+                                              </button>
+                                              <button
+                                                onClick={() => handleDeleteIngredient(ing.id)}
+                                                className="p-1.5 text-red-400 hover:bg-red-50 rounded"
+                                                title="Delete"
+                                              >
+                                                <Trash2 size={14} />
+                                              </button>
+                                              <button
+                                                onClick={() => setEditingIngredient(null)}
+                                                className="p-1.5 text-gray-400 hover:bg-gray-100 rounded"
+                                                title="Cancel"
+                                              >
+                                                <X size={14} />
+                                              </button>
+                                            </div>
+                                          </div>
+                                          
+                                          {ing.source === 'PANTRY' && (
+                                            <div className="bg-white rounded-lg p-2 border border-[#E5DDD3]">
+                                              <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">What you buy</div>
+                                              <div className="flex items-center gap-1 flex-wrap">
+                                                <input
+                                                  type="number"
+                                                  step="0.1"
+                                                  min="0"
+                                                  placeholder="Qty"
+                                                  value={editValues.purchaseSize || ''}
+                                                  onChange={(e) => setEditValues({ ...editValues, purchaseSize: parseFloat(e.target.value) || null })}
+                                                  className="w-14 px-1.5 py-1 border border-[#E5DDD3] rounded text-sm text-center"
+                                                />
+                                                <select
+                                                  value={editValues.purchaseUnit || ''}
+                                                  onChange={(e) => setEditValues({ ...editValues, purchaseUnit: e.target.value || null })}
+                                                  className="w-16 px-1 py-1 border border-[#E5DDD3] rounded text-sm bg-white"
+                                                >
+                                                  <option value="">unit</option>
+                                                  {getCommonPurchaseUnits().map(u => (
+                                                    <option key={u} value={u}>{u}</option>
+                                                  ))}
+                                                </select>
+                                                <span className="text-gray-400 text-xs">@</span>
+                                                <span className="text-gray-400">$</span>
+                                                <input
+                                                  type="number"
+                                                  step="0.01"
+                                                  min="0"
+                                                  placeholder="0.00"
+                                                  value={editValues.purchaseCost || ''}
+                                                  onChange={(e) => setEditValues({ ...editValues, purchaseCost: parseFloat(e.target.value) || null })}
+                                                  className="w-14 px-1.5 py-1 border border-[#E5DDD3] rounded text-sm text-right"
+                                                />
+                                              </div>
+                                              {editValues.purchaseSize && editValues.purchaseUnit && editValues.purchaseCost && (
+                                                <p className="text-[10px] text-gray-400 mt-1">
+                                                  {editValues.purchaseSize} {editValues.purchaseUnit} for ${editValues.purchaseCost.toFixed(2)}
+                                                </p>
+                                              )}
+                                            </div>
+                                          )}
+                                          
+                                          {ing.source === 'GARDEN' && (
+                                            <p className="text-xs text-green-600">🌱 From the garden — no cost</p>
+                                          )}
+                                          
+                                          {ing.source === 'PACKAGING' && (
+                                            <div className="bg-white rounded-lg p-2 border border-[#E5DDD3]">
+                                              <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Cost per item</div>
+                                              <div className="flex items-center gap-1">
+                                                <span className="text-gray-400">$</span>
+                                                <input
+                                                  type="number"
+                                                  step="0.01"
+                                                  min="0"
+                                                  value={editValues.unitCost}
+                                                  onChange={(e) => setEditValues({ ...editValues, unitCost: parseFloat(e.target.value) || 0 })}
+                                                  className="w-16 px-1.5 py-1 border border-[#E5DDD3] rounded text-sm text-right"
+                                                  autoFocus
+                                                />
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        /* Display Mode - Just name, click to edit */
+                                        <div 
+                                          className="cursor-pointer hover:bg-[#FDF8F3] rounded px-2 py-1 -mx-2 transition-colors text-[#5C4A3D] hover:text-[#4A7C59]"
+                                          onClick={() => startEditingIngredient(ing)}
+                                        >
+                                          {ing.name}
+                                        </div>
+                                      )}
                     </li>
                   ))}
                 </ul>
@@ -385,14 +516,30 @@ export default function CogsCalculator() {
 
       {/* Recipe Cards */}
       <div className="space-y-4">
-        {sortedRecipes.length === 0 ? (
+        {filteredRecipes.length === 0 ? (
           <div className="bg-white rounded-xl border border-[#E5DDD3] p-12 text-center">
-            <Sparkles size={48} className="mx-auto text-[#E5DDD3] mb-4" />
-            <p className="text-lg font-serif text-[#5C4A3D]">No recipes yet</p>
-            <p className="text-sm text-gray-500 mt-1">Create your first recipe to start calculating costs!</p>
+            {activeTab === 'ideas' ? (
+              <>
+                <Beaker size={48} className="mx-auto text-[#E5DDD3] mb-4" />
+                <p className="text-lg font-serif text-[#5C4A3D]">No recipe ideas yet</p>
+                <p className="text-sm text-gray-500 mt-1">Start experimenting! Create your first recipe to calculate costs.</p>
+              </>
+            ) : activeTab === 'ready' ? (
+              <>
+                <ArrowRight size={48} className="mx-auto text-[#E5DDD3] mb-4" />
+                <p className="text-lg font-serif text-[#5C4A3D]">Nothing ready to share yet</p>
+                <p className="text-sm text-gray-500 mt-1">When your recipe ideas are perfected, move them here for final polish.</p>
+              </>
+            ) : (
+              <>
+                <ShoppingBag size={48} className="mx-auto text-[#E5DDD3] mb-4" />
+                <p className="text-lg font-serif text-[#5C4A3D]">Nothing on the shelf yet</p>
+                <p className="text-sm text-gray-500 mt-1">Published recipes will appear here once they&apos;re live in your store.</p>
+              </>
+            )}
           </div>
         ) : (
-          sortedRecipes.map(recipe => {
+          filteredRecipes.map(recipe => {
             const costs = calculateRecipeCosts(recipe);
             const isExpanded = expandedRecipe === recipe.id;
             const batchSize = batchSizes[recipe.id] || 1;
@@ -430,7 +577,7 @@ export default function CogsCalculator() {
                           <p className="font-bold text-[#5C4A3D]">{formatCurrency(recipe.retailPrice)}</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-xs text-gray-400 uppercase">You Earn</p>
+                          <p className="text-xs text-gray-400 uppercase">💰 Profit</p>
                           <p className="font-bold text-[#4A7C59]">{formatCurrency(costs.profit)}</p>
                         </div>
                         <div className={`text-center px-3 py-1 rounded-lg ${getMarginStyle(costs.margin).bg}`}>
@@ -457,15 +604,16 @@ export default function CogsCalculator() {
                         </h4>
                         <ul className="space-y-2">
                           {recipe.ingredients.map(ri => {
-                            const cost = ri.ingredient.isFromGarden ? 0 : ri.ingredient.unitCost * ri.quantity;
+                            const cost = ri.ingredient.source === 'GARDEN' ? 0 : ri.ingredient.unitCost * ri.quantity;
                             return (
                               <li key={ri.id} className="flex items-center justify-between text-sm">
                                 <span className="flex items-center gap-2">
-                                  {ri.ingredient.isFromGarden && <Leaf size={12} className="text-green-500" />}
+                                  {ri.ingredient.source === 'GARDEN' && <span>🌱</span>}
+                                  {ri.ingredient.source === 'PACKAGING' && <span>📦</span>}
                                   {ri.quantity} {ri.ingredient.unit} {ri.ingredient.name}
                                 </span>
-                                <span className={ri.ingredient.isFromGarden ? 'text-green-600' : 'text-gray-600'}>
-                                  {ri.ingredient.isFromGarden ? '🌱' : formatCurrency(cost)}
+                                <span className={ri.ingredient.source === 'GARDEN' ? 'text-green-600' : 'text-gray-600'}>
+                                  {ri.ingredient.source === 'GARDEN' ? '🌱' : formatCurrency(cost)}
                                 </span>
                               </li>
                             );
@@ -529,43 +677,255 @@ export default function CogsCalculator() {
                       </div>
                     </div>
 
-                    {/* Actions */}
+                    {/* Actions - Different per tab */}
                     <div className="flex justify-between items-center mt-4 pt-4 border-t border-[#E5DDD3]">
-                      <div>
-                        {recipe.product ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm font-medium">
-                            <Check size={14} />
-                            Published: {recipe.product.name}
-                            {!recipe.product.isAvailable && (
-                              <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded ml-1">Hidden</span>
-                            )}
-                          </span>
-                        ) : (
+                      {activeTab === 'ideas' && (
+                        <>
                           <button
-                            onClick={() => setPublishingRecipe(recipe)}
-                            className="px-3 py-1.5 text-sm bg-[#4A7C59] text-white hover:bg-[#3d6649] rounded-lg transition-colors flex items-center gap-1.5 font-medium"
+                            onClick={() => handleMoveRecipe(recipe.id, 'READY')}
+                            className="px-3 py-1.5 text-sm text-[#4A7C59] hover:bg-[#E8F0EA] rounded-lg transition-colors flex items-center gap-1.5 font-medium"
                           >
-                            <ShoppingBag size={14} />
-                            Publish to Store
+                            Ready to Share
+                            <ArrowRight size={14} />
                           </button>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setEditingRecipe(recipe)}
-                          className="px-3 py-1.5 text-sm text-[#5C4A3D] hover:bg-white rounded-lg transition-colors flex items-center gap-1"
-                        >
-                          <Edit3 size={14} />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRecipe(recipe.id)}
-                          className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
-                        >
-                          <Trash2 size={14} />
-                          Delete
-                        </button>
-                      </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setEditingRecipe(recipe)}
+                              className="px-3 py-1.5 text-sm text-[#5C4A3D] hover:bg-white rounded-lg transition-colors flex items-center gap-1"
+                            >
+                              <Edit3 size={14} />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRecipe(recipe.id)}
+                              className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                      
+                      {activeTab === 'ready' && (
+                        <>
+                          <button
+                            onClick={() => handleMoveRecipe(recipe.id, 'IDEA')}
+                            className="px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5"
+                          >
+                            <ArrowRight size={14} className="rotate-180" />
+                            Back to Ideas
+                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setEditingRecipe(recipe)}
+                              className="px-3 py-1.5 text-sm text-[#5C4A3D] hover:bg-white rounded-lg transition-colors flex items-center gap-1"
+                            >
+                              <Edit3 size={14} />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => setPublishingRecipe(recipe)}
+                              className="px-4 py-1.5 text-sm bg-[#4A7C59] text-white hover:bg-[#3d6649] rounded-lg transition-colors flex items-center gap-1.5 font-medium"
+                            >
+                              <ShoppingBag size={14} />
+                              Put on Shelf
+                            </button>
+                          </div>
+                        </>
+                      )}
+                      
+                      {activeTab === 'published' && recipe.product && (
+                        <div className="space-y-4">
+                          {/* Product Controls Row */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {/* In Stock Toggle */}
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await fetch(`/api/products/${recipe.product!.id}`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ isAvailable: !recipe.product!.isAvailable })
+                                    });
+                                    await fetchData();
+                                  } catch (e) {
+                                    console.error('Failed to toggle availability:', e);
+                                  }
+                                }}
+                                className={`px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 font-medium ${
+                                  recipe.product.isAvailable 
+                                    ? 'text-green-700 bg-green-50 hover:bg-green-100 border border-green-200' 
+                                    : 'text-gray-500 bg-gray-100 hover:bg-gray-200 border border-gray-200'
+                                }`}
+                              >
+                                {recipe.product.isAvailable ? <PackageCheck size={16} /> : <PackageX size={16} />}
+                                {recipe.product.isAvailable ? 'In Stock' : 'Out of Stock'}
+                              </button>
+                              <a
+                                href="/shop"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-2 text-sm text-[#5C4A3D] hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1"
+                              >
+                                <ExternalLink size={14} />
+                                View in Shop
+                              </a>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setEditingRecipe(recipe)}
+                                className="px-3 py-1.5 text-sm text-[#5C4A3D] hover:bg-white rounded-lg transition-colors flex items-center gap-1"
+                              >
+                                <Edit3 size={14} />
+                                Edit Recipe
+                              </button>
+                              <button
+                                onClick={() => handleMoveRecipe(recipe.id, 'READY')}
+                                className="px-3 py-1.5 text-sm text-amber-600 hover:bg-amber-50 rounded-lg transition-colors flex items-center gap-1"
+                              >
+                                Remove from Shelf
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {/* Product Details Section */}
+                          <div className="border-t border-[#E5DDD3] pt-4">
+                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                              <ShoppingBag size={14} />
+                              Product Details
+                            </h4>
+                            
+                            {editingProductId === recipe.product.id ? (
+                              /* Edit Mode */
+                              <div className="space-y-4 bg-white rounded-lg p-4 border border-[#E5DDD3]">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Product Name</label>
+                                    <input
+                                      type="text"
+                                      value={productEdits.name}
+                                      onChange={(e) => setProductEdits({ ...productEdits, name: e.target.value })}
+                                      className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
+                                    <select
+                                      value={productEdits.category}
+                                      onChange={(e) => setProductEdits({ ...productEdits, category: e.target.value })}
+                                      className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg text-sm bg-white"
+                                    >
+                                      <option value="">No category</option>
+                                      <option value="Applesauces">Applesauces</option>
+                                      <option value="Spreads">Spreads</option>
+                                      <option value="Dried Goods">Dried Goods</option>
+                                      <option value="Jams">Jams</option>
+                                      <option value="Pickled Goods">Pickled Goods</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                                  <textarea
+                                    value={productEdits.description}
+                                    onChange={(e) => setProductEdits({ ...productEdits, description: e.target.value })}
+                                    rows={3}
+                                    className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Image URL</label>
+                                  <input
+                                    type="text"
+                                    value={productEdits.imageUrl}
+                                    onChange={(e) => setProductEdits({ ...productEdits, imageUrl: e.target.value })}
+                                    className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg text-sm"
+                                    placeholder="https://..."
+                                  />
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => setEditingProductId(null)}
+                                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await fetch(`/api/products/${recipe.product!.id}`, {
+                                          method: 'PUT',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify(productEdits)
+                                        });
+                                        await fetchData();
+                                        setEditingProductId(null);
+                                      } catch (e) {
+                                        console.error('Failed to update product:', e);
+                                      }
+                                    }}
+                                    className="px-4 py-2 text-sm bg-[#4A7C59] text-white rounded-lg hover:bg-[#3d6549] flex items-center gap-2"
+                                  >
+                                    <Save size={14} />
+                                    Save Changes
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              /* View Mode */
+                              <div className="bg-white rounded-lg p-4 border border-[#E5DDD3]">
+                                <div className="flex gap-4">
+                                  {/* Product Image */}
+                                  <div className="flex-shrink-0">
+                                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100">
+                                      <img 
+                                        src={recipe.product.imageUrl} 
+                                        alt={recipe.product.name}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Product Info */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between">
+                                      <div>
+                                        <h5 className="font-medium text-[#5C4A3D]">{recipe.product.name}</h5>
+                                        {recipe.product.category && (
+                                          <span className="inline-flex items-center gap-1 text-xs text-gray-500 mt-1">
+                                            <Tag size={10} />
+                                            {recipe.product.category}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <button
+                                        onClick={() => {
+                                          setEditingProductId(recipe.product!.id);
+                                          setProductEdits({
+                                            name: recipe.product!.name,
+                                            description: recipe.product!.description || '',
+                                            imageUrl: recipe.product!.imageUrl,
+                                            category: recipe.product!.category || ''
+                                          });
+                                        }}
+                                        className="text-sm text-[#4A7C59] hover:text-[#3d6549] flex items-center gap-1"
+                                      >
+                                        <Edit3 size={12} />
+                                        Edit
+                                      </button>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                                      {recipe.product.description}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -681,7 +1041,7 @@ function RecipeEditorModal({ recipe, ingredients, onClose, onSave }: RecipeEdito
   const previewCosts = useMemo(() => {
     const ingredientsCost = recipeIngredients.reduce((sum, ri) => {
       const ing = ingredients.find(i => i.id === ri.ingredientId);
-      if (!ing || ing.isFromGarden) return sum;
+      if (!ing || ing.source === 'GARDEN') return sum;
       return sum + (ing.unitCost * ri.quantity);
     }, 0);
     
@@ -857,12 +1217,12 @@ function RecipeEditorModal({ recipe, ingredients, onClose, onSave }: RecipeEdito
                     >
                       {ingredients.map(ing => (
                         <option key={ing.id} value={ing.id}>
-                          {ing.isFromGarden ? '🏡 ' : ''}{ing.name} ({ing.unit})
+                          {ing.source === 'GARDEN' ? '🌱 ' : ing.source === 'PACKAGING' ? '📦 ' : ''}{ing.name} ({ing.unit})
                         </option>
                       ))}
                     </select>
                     <span className="w-16 text-right text-sm text-gray-500">
-                      {ing?.isFromGarden ? (
+                      {ing?.source === 'GARDEN' ? (
                         <span className="text-green-600">🌱</span>
                       ) : (
                         formatCurrency((ing?.unitCost || 0) * ri.quantity)
@@ -969,8 +1329,11 @@ interface AddIngredientModalProps {
     name: string;
     unitCost: number;
     unit: string;
-    isFromGarden: boolean;
+    source: IngredientSource;
     category: string;
+    purchaseSize?: number | null;
+    purchaseUnit?: string | null;
+    purchaseCost?: number | null;
   }) => void;
 }
 
@@ -978,20 +1341,33 @@ function AddIngredientModal({ onClose, onSave }: AddIngredientModalProps) {
   const [name, setName] = useState('');
   const [unitCost, setUnitCost] = useState(0);
   const [unit, setUnit] = useState('cup');
-  const [isFromGarden, setIsFromGarden] = useState(false);
+  const [source, setSource] = useState<IngredientSource>('PANTRY');
   const [category, setCategory] = useState('Pantry');
-
-  const commonUnits = ['cup', 'tbsp', 'tsp', 'lb', 'oz', 'each', 'bunch', 'clove', 'packet'];
+  // Purchase tracking
+  const [purchaseSize, setPurchaseSize] = useState<number | null>(null);
+  const [purchaseUnit, setPurchaseUnit] = useState<string | null>(null);
+  const [purchaseCost, setPurchaseCost] = useState<number | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
       name,
-      unitCost: isFromGarden ? 0 : unitCost,
+      unitCost: source === 'GARDEN' ? 0 : unitCost,
       unit,
-      isFromGarden,
-      category
+      source,
+      category,
+      purchaseSize: source === 'PANTRY' ? purchaseSize : null,
+      purchaseUnit: source === 'PANTRY' ? purchaseUnit : null,
+      purchaseCost: source === 'PANTRY' ? purchaseCost : null,
     });
+  };
+
+  // Sync category with source
+  const handleSourceChange = (newSource: IngredientSource) => {
+    setSource(newSource);
+    if (newSource === 'GARDEN') setCategory('Produce');
+    else if (newSource === 'PACKAGING') setCategory('Packaging');
+    else setCategory('Pantry');
   };
 
   return (
@@ -1019,102 +1395,142 @@ function AddIngredientModal({ onClose, onSave }: AddIngredientModalProps) {
             />
           </div>
 
-          {/* Category */}
+          {/* Source Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg"
-            >
-              <option value="Pantry">Pantry (purchased items)</option>
-              <option value="Garden">Garden (homegrown)</option>
-              <option value="Packaging">Packaging</option>
-            </select>
-          </div>
-
-          {/* From Garden Toggle */}
-          <div className="flex items-center gap-3 py-2">
-            <button
-              type="button"
-              onClick={() => setIsFromGarden(!isFromGarden)}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                isFromGarden ? 'bg-green-500' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                  isFromGarden ? 'translate-x-7' : 'translate-x-1'
+            <label className="block text-sm font-medium text-gray-700 mb-2">Where does this come from?</label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleSourceChange('PANTRY')}
+                className={`p-3 rounded-lg border-2 text-center transition-all ${
+                  source === 'PANTRY' 
+                    ? 'border-[#4A7C59] bg-[#E8F0EA]' 
+                    : 'border-[#E5DDD3] hover:border-gray-300'
                 }`}
-              />
-            </button>
-            <span className="text-sm text-gray-700 flex items-center gap-2">
-              <Leaf size={16} className={isFromGarden ? 'text-green-500' : 'text-gray-400'} />
-              From the Garden (homegrown)
-            </span>
+              >
+                <div className="text-sm font-medium">Pantry</div>
+                <div className="text-[10px] text-gray-500">Store-bought</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSourceChange('GARDEN')}
+                className={`p-3 rounded-lg border-2 text-center transition-all ${
+                  source === 'GARDEN' 
+                    ? 'border-green-500 bg-green-50' 
+                    : 'border-[#E5DDD3] hover:border-gray-300'
+                }`}
+              >
+                <div className="text-sm font-medium">Produce</div>
+                <div className="text-[10px] text-gray-500">Homegrown</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSourceChange('PACKAGING')}
+                className={`p-3 rounded-lg border-2 text-center transition-all ${
+                  source === 'PACKAGING' 
+                    ? 'border-amber-500 bg-amber-50' 
+                    : 'border-[#E5DDD3] hover:border-gray-300'
+                }`}
+              >
+                <div className="text-sm font-medium">Packaging</div>
+                <div className="text-[10px] text-gray-500">Jars, lids, etc.</div>
+              </button>
+            </div>
           </div>
 
-          {/* Cost and Unit */}
-          {!isFromGarden && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cost per Unit</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+          {/* Cost and Unit - different UI per source */}
+          {source === 'PANTRY' && (
+            <div className="bg-[#FDF8F3] rounded-lg p-4 space-y-3">
+              <h4 className="text-sm font-medium text-gray-700">
+                What you buy at the store
+              </h4>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Size</label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="0.1"
                     min="0"
-                    value={unitCost}
-                    onChange={(e) => setUnitCost(parseFloat(e.target.value) || 0)}
-                    className="w-full pl-7 pr-3 py-2 border border-[#E5DDD3] rounded-lg"
+                    placeholder="e.g., 2"
+                    value={purchaseSize || ''}
+                    onChange={(e) => setPurchaseSize(parseFloat(e.target.value) || null)}
+                    className="w-full px-2 py-1.5 border border-[#E5DDD3] rounded-lg text-sm"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Unit</label>
+                  <select
+                    value={purchaseUnit || ''}
+                    onChange={(e) => {
+                      const newUnit = e.target.value || null;
+                      setPurchaseUnit(newUnit);
+                      // Also set the ingredient unit to match
+                      if (newUnit) setUnit(newUnit);
+                    }}
+                    className="w-full px-2 py-1.5 border border-[#E5DDD3] rounded-lg text-sm bg-white"
+                  >
+                    <option value="">Select...</option>
+                    {getCommonPurchaseUnits().map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Price</label>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1.5 text-gray-400 text-sm">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="4.00"
+                      value={purchaseCost || ''}
+                      onChange={(e) => setPurchaseCost(parseFloat(e.target.value) || null)}
+                      className="w-full pl-5 pr-2 py-1.5 border border-[#E5DDD3] rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-                <select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg"
-                >
-                  {commonUnits.map(u => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
-              </div>
+              {purchaseSize && purchaseUnit && purchaseCost && (
+                <p className="text-xs text-gray-500">
+                  {purchaseSize} {purchaseUnit} for ${purchaseCost.toFixed(2)}
+                </p>
+              )}
             </div>
           )}
 
-          {isFromGarden && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Unit (for measuring)</label>
-              <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg"
-              >
-                {commonUnits.map(u => (
-                  <option key={u} value={u}>{u}</option>
-                ))}
-              </select>
+          {source === 'GARDEN' && (
+            <p className="text-sm text-green-700 bg-green-50 rounded-lg p-3">
+              🌱 Produce from the garden has no cost — it&apos;s homegrown!
+            </p>
+          )}
+
+          {source === 'PACKAGING' && (
+            <div className="bg-[#FDF8F3] rounded-lg p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Cost per item</label>
+              <div className="relative w-32">
+                <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={unitCost}
+                  onChange={(e) => setUnitCost(parseFloat(e.target.value) || 0)}
+                  className="w-full pl-7 pr-3 py-2 border border-[#E5DDD3] rounded-lg"
+                />
+              </div>
             </div>
           )}
 
           {/* Preview */}
-          <div className="bg-[#FDF8F3] rounded-lg p-3 flex items-center justify-between">
-            <span className="text-sm text-gray-600 flex items-center gap-2">
-              {isFromGarden && <Leaf size={14} className="text-green-500" />}
-              {name || 'Ingredient Name'}
-            </span>
-            <span className="text-sm font-medium">
-              {isFromGarden ? (
-                <span className="text-green-600">🌱 per {unit}</span>
-              ) : (
-                `${formatCurrency(unitCost)}/${unit}`
-              )}
-            </span>
-          </div>
+          {name && (
+            <div className="bg-[#FDF8F3] rounded-lg p-3 text-center">
+              <span className="text-sm text-[#5C4A3D] font-medium">{name}</span>
+              <span className="text-xs text-gray-400 ml-2">
+                {source === 'GARDEN' ? '(Produce)' : source === 'PACKAGING' ? '(Packaging)' : '(Pantry)'}
+              </span>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4">

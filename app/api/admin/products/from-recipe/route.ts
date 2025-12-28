@@ -55,21 +55,27 @@ export async function POST(request: NextRequest) {
       ? Math.round(price * 100) 
       : Math.round(recipe.retailPrice * 100);
 
-    // Create the product linked to the recipe
-    const product = await prisma.product.create({
-      data: {
-        name,
-        description,
-        price: priceInCents,
-        imageUrl,
-        category: category || null,
-        isAvailable: isAvailable !== undefined ? isAvailable : true,
-        cogsRecipeId: recipeId,
-      },
-      include: {
-        cogsRecipe: true,
-      }
-    });
+    // Create the product linked to the recipe and update recipe status to PUBLISHED
+    const [product] = await prisma.$transaction([
+      prisma.product.create({
+        data: {
+          name,
+          description,
+          price: priceInCents,
+          imageUrl,
+          category: category || null,
+          isAvailable: isAvailable !== undefined ? isAvailable : true,
+          cogsRecipeId: recipeId,
+        },
+        include: {
+          cogsRecipe: true,
+        }
+      }),
+      prisma.cogsRecipe.update({
+        where: { id: recipeId },
+        data: { status: 'PUBLISHED' }
+      })
+    ]);
 
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
@@ -77,4 +83,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
   }
 }
+
 

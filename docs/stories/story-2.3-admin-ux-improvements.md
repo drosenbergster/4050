@@ -97,3 +97,4 @@ Removed public navigation from admin because:
 - Add product search/filter when catalog exceeds 20 items
 - Add "Duplicate Product" feature for similar items
 
+
