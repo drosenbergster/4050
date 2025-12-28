@@ -43,8 +43,21 @@ export async function POST(req: Request) {
         // 1. Update the order in the database
         // Prefer linking by metadata.orderId (more robust than relying solely on stripePaymentIntentId)
         const orderId = paymentIntent.metadata?.orderId;
+        
+        let order;
+        if (orderId) {
+          order = await prisma.order.findUnique({ where: { id: orderId } });
+        } else {
+          order = await prisma.order.findFirst({ where: { stripePaymentIntentId: paymentIntent.id } });
+        }
+        
+        if (!order) {
+          console.error(`❌ Order not found for payment: ${paymentIntent.id}`);
+          break;
+        }
+        
         const updatedOrder = await prisma.order.update({
-          where: orderId ? { id: orderId } : { stripePaymentIntentId: paymentIntent.id },
+          where: { id: order.id },
           data: {
             paymentStatus: 'PAID',
             stripePaymentIntentId: paymentIntent.id,
