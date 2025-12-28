@@ -79,14 +79,24 @@ export async function POST(req: Request) {
       console.log(`❌ Payment failed: ${failedIntent.id}`);
       
       try {
-        const orderId = failedIntent.metadata?.orderId;
-        await prisma.order.update({
-          where: orderId ? { id: orderId } : { stripePaymentIntentId: failedIntent.id },
-          data: {
-            paymentStatus: 'FAILED',
-            stripePaymentIntentId: failedIntent.id,
-          },
-        });
+        const failedOrderId = failedIntent.metadata?.orderId;
+        
+        let failedOrder;
+        if (failedOrderId) {
+          failedOrder = await prisma.order.findUnique({ where: { id: failedOrderId } });
+        } else {
+          failedOrder = await prisma.order.findFirst({ where: { stripePaymentIntentId: failedIntent.id } });
+        }
+        
+        if (failedOrder) {
+          await prisma.order.update({
+            where: { id: failedOrder.id },
+            data: {
+              paymentStatus: 'FAILED',
+              stripePaymentIntentId: failedIntent.id,
+            },
+          });
+        }
       } catch (dbError) {
         console.error(`❌ Database Error updating failed payment order:`, dbError);
       }
