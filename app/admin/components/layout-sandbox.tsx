@@ -842,7 +842,10 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
             draggable
             onWheel={handleWheel}
             onDragEnd={(e) => {
-              setPosition({ x: e.target.x(), y: e.target.y() });
+              // Only update position when dragging the Stage itself, not child elements
+              if (e.target === stageRef.current) {
+                setPosition({ x: e.target.x(), y: e.target.y() });
+              }
             }}
             onClick={(e) => {
               // Handle crop placement mode
