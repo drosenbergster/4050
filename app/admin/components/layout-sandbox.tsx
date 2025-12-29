@@ -68,8 +68,8 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
   // Canvas state
   const [beds, setBeds] = useState<GardenBed[]>([]);
   const [plants, setPlants] = useState<PlacedPlant[]>([]);
-  const [selectedBedId, setSelectedBedId] = useState<string | null>(null);
-  const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null);
+  const [selectedBedIds, setSelectedBedIds] = useState<Set<string>>(new Set());
+  const [selectedPlantIds, setSelectedPlantIds] = useState<Set<string>>(new Set());
   const [scale, setScale] = useState(0.8);
   const [position, setPosition] = useState({ x: 50, y: 50 });
   const [canvasWidth, setCanvasWidth] = useState(600); // 50ft default
@@ -156,8 +156,8 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
     setPlants(canvas.plants || []);
     setCanvasWidth(canvas.width || 600);
     setCanvasHeight(canvas.height || 600);
-    setSelectedBedId(null);
-    setSelectedPlantId(null);
+    setSelectedBedIds(new Set());
+    setSelectedPlantIds(new Set());
     setHasUnsavedChanges(false);
   };
 
@@ -270,7 +270,7 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
       rotation: 0,
     };
     setBeds([...beds, newBed]);
-    setSelectedBedId(newBed.id);
+    selectBed(newBed.id);
     setHasUnsavedChanges(true);
   };
 
@@ -284,7 +284,7 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
       y: snapToGrid(bed.y + 24),
     };
     setBeds([...beds, newBed]);
-    setSelectedBedId(newBed.id);
+    selectBed(newBed.id);
     setHasUnsavedChanges(true);
   };
 
@@ -304,7 +304,81 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
 
   const deleteBed = (id: string) => {
     setBeds(beds.filter(bed => bed.id !== id));
-    if (selectedBedId === id) setSelectedBedId(null);
+    setSelectedBedIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setHasUnsavedChanges(true);
+  };
+
+  // Selection helpers
+  const selectBed = (id: string, addToSelection: boolean = false) => {
+    if (addToSelection) {
+      setSelectedBedIds(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    } else {
+      setSelectedBedIds(new Set([id]));
+      setSelectedPlantIds(new Set());
+    }
+  };
+
+  const selectPlant = (id: string, addToSelection: boolean = false) => {
+    if (addToSelection) {
+      setSelectedPlantIds(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    } else {
+      setSelectedPlantIds(new Set([id]));
+      setSelectedBedIds(new Set());
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedBedIds(new Set());
+    setSelectedPlantIds(new Set());
+  };
+
+  const deleteSelected = () => {
+    if (selectedBedIds.size > 0) {
+      setBeds(beds.filter(bed => !selectedBedIds.has(bed.id)));
+    }
+    if (selectedPlantIds.size > 0) {
+      setPlants(plants.filter(plant => !selectedPlantIds.has(plant.id)));
+    }
+    clearSelection();
+    setHasUnsavedChanges(true);
+  };
+
+  // Move all selected items by a delta
+  const moveSelected = (deltaX: number, deltaY: number) => {
+    if (selectedBedIds.size > 0) {
+      setBeds(beds.map(bed => 
+        selectedBedIds.has(bed.id) 
+          ? { ...bed, x: snapToGrid(bed.x + deltaX), y: snapToGrid(bed.y + deltaY) }
+          : bed
+      ));
+    }
+    if (selectedPlantIds.size > 0) {
+      setPlants(plants.map(plant => 
+        selectedPlantIds.has(plant.id)
+          ? { ...plant, x: snapToGrid(plant.x + deltaX), y: snapToGrid(plant.y + deltaY) }
+          : plant
+      ));
+    }
     setHasUnsavedChanges(true);
   };
 
@@ -329,7 +403,11 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
 
   const deletePlant = (id: string) => {
     setPlants(plants.filter(plant => plant.id !== id));
-    if (selectedPlantId === id) setSelectedPlantId(null);
+    setSelectedPlantIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     setHasUnsavedChanges(true);
   };
 
@@ -343,7 +421,7 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
       y: snapToGrid(plant.y),
     };
     setPlants([...plants, newPlant]);
-    setSelectedPlantId(newPlant.id);
+    selectPlant(newPlant.id);
     setHasUnsavedChanges(true);
   };
 
@@ -763,34 +841,56 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
             </p>
           </div>
 
-          {/* Selected Bed Tools - only show when bed selected */}
-          {selectedBedId && (
+          {/* Selection Tools - only show when items selected */}
+          {(selectedBedIds.size > 0 || selectedPlantIds.size > 0) && (
             <div className="bg-white rounded-xl border border-[#E5DDD3] p-3">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                🛏️ Selected Bed
+                ✓ Selected ({selectedBedIds.size + selectedPlantIds.size})
               </h3>
+              <p className="text-xs text-gray-400 mb-2">
+                {selectedBedIds.size > 0 && `${selectedBedIds.size} bed${selectedBedIds.size > 1 ? 's' : ''}`}
+                {selectedBedIds.size > 0 && selectedPlantIds.size > 0 && ', '}
+                {selectedPlantIds.size > 0 && `${selectedPlantIds.size} plant${selectedPlantIds.size > 1 ? 's' : ''}`}
+              </p>
+              <p className="text-[10px] text-gray-400 mb-2 italic">
+                Shift+Click to add more • Drag to move all
+              </p>
               <div className="flex gap-1">
+                {selectedBedIds.size === 1 && (
+                  <button
+                    onClick={() => {
+                      const bedId = Array.from(selectedBedIds)[0];
+                      rotateBed(bedId);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs"
+                  >
+                    <RotateCw size={12} /> Rotate
+                  </button>
+                )}
                 <button
-                  onClick={() => rotateBed(selectedBedId)}
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs"
-                >
-                  <RotateCw size={12} /> Rotate
-                </button>
-                <button
-                  onClick={() => deleteBed(selectedBedId)}
+                  onClick={deleteSelected}
                   className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded text-xs"
                 >
                   <Trash2 size={12} /> Delete
                 </button>
               </div>
+              {selectedBedIds.size === 1 && (
+                <button
+                  onClick={() => {
+                    const bedId = Array.from(selectedBedIds)[0];
+                    const bed = beds.find(b => b.id === bedId);
+                    if (bed) setEditingBed(bed);
+                  }}
+                  className="w-full mt-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs"
+                >
+                  <Edit3 size={12} /> Edit Size
+                </button>
+              )}
               <button
-                onClick={() => {
-                  const bed = beds.find(b => b.id === selectedBedId);
-                  if (bed) setEditingBed(bed);
-                }}
-                className="w-full mt-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs"
+                onClick={clearSelection}
+                className="w-full mt-1 flex items-center justify-center gap-1 px-2 py-1.5 text-gray-500 hover:bg-gray-50 rounded text-xs"
               >
-                <Edit3 size={12} /> Edit Size
+                <X size={12} /> Clear Selection
               </button>
             </div>
           )}
@@ -864,8 +964,7 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
               
               // Deselect when clicking on empty canvas
               if (e.target === e.target.getStage()) {
-                setSelectedBedId(null);
-                setSelectedPlantId(null);
+                clearSelection();
               }
               closeContextMenu();
             }}
@@ -901,38 +1000,46 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
                   y={bed.y}
                   rotation={bed.rotation}
                   draggable
-                  onClick={() => {
-                    setSelectedBedId(bed.id);
-                    setSelectedPlantId(null);
+                  onClick={(e) => {
+                    const isShiftKey = e.evt.shiftKey;
+                    selectBed(bed.id, isShiftKey);
                   }}
                   onContextMenu={(e) => {
                     e.evt.preventDefault();
-                    const stage = stageRef.current;
-                    if (!stage) return;
-                    const rect = containerRef.current?.getBoundingClientRect();
-                    if (!rect) return;
+                    if (!selectedBedIds.has(bed.id)) {
+                      selectBed(bed.id);
+                    }
                     setContextMenu({
                       x: e.evt.clientX,
                       y: e.evt.clientY,
                       type: 'bed',
                       targetId: bed.id,
                     });
-                    setSelectedBedId(bed.id);
                   }}
                   onDragEnd={(e) => {
                     const snappedX = snapToGrid(e.target.x());
                     const snappedY = snapToGrid(e.target.y());
-                    e.target.x(snappedX);
-                    e.target.y(snappedY);
-                    updateBed(bed.id, { x: snappedX, y: snappedY });
+                    const deltaX = snappedX - bed.x;
+                    const deltaY = snappedY - bed.y;
+                    
+                    // Reset this element's position (we'll update via state)
+                    e.target.x(bed.x);
+                    e.target.y(bed.y);
+                    
+                    // If this bed is selected, move all selected items
+                    if (selectedBedIds.has(bed.id)) {
+                      moveSelected(deltaX, deltaY);
+                    } else {
+                      updateBed(bed.id, { x: snappedX, y: snappedY });
+                    }
                   }}
                 >
                   <Rect
                     width={bed.width}
                     height={bed.height}
                     fill={COLORS.bedFill}
-                    stroke={selectedBedId === bed.id ? COLORS.selected : COLORS.bedStroke}
-                    strokeWidth={selectedBedId === bed.id ? 3 : 2}
+                    stroke={selectedBedIds.has(bed.id) ? COLORS.selected : COLORS.bedStroke}
+                    strokeWidth={selectedBedIds.has(bed.id) ? 3 : 2}
                     cornerRadius={4}
                     offsetX={bed.width / 2}
                     offsetY={bed.height / 2}
@@ -947,7 +1054,7 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
                 
                 const spacing = crop.spacingInches || 12;
                 const isOverlapping = overlappingPlants.has(plant.id);
-                const isSelected = selectedPlantId === plant.id;
+                const isSelected = selectedPlantIds.has(plant.id);
                 const firstLetter = crop.name.charAt(0).toUpperCase();
                 
                 return (
@@ -956,26 +1063,38 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
                     x={plant.x}
                     y={plant.y}
                     draggable
-                    onClick={() => {
-                      setSelectedPlantId(plant.id);
-                      setSelectedBedId(null);
+                    onClick={(e) => {
+                      const isShiftKey = e.evt.shiftKey;
+                      selectPlant(plant.id, isShiftKey);
                     }}
                     onContextMenu={(e) => {
                       e.evt.preventDefault();
+                      if (!selectedPlantIds.has(plant.id)) {
+                        selectPlant(plant.id);
+                      }
                       setContextMenu({
                         x: e.evt.clientX,
                         y: e.evt.clientY,
                         type: 'plant',
                         targetId: plant.id,
                       });
-                      setSelectedPlantId(plant.id);
                     }}
                     onDragEnd={(e) => {
                       const snappedX = snapToGrid(e.target.x());
                       const snappedY = snapToGrid(e.target.y());
-                      e.target.x(snappedX);
-                      e.target.y(snappedY);
-                      updatePlant(plant.id, { x: snappedX, y: snappedY });
+                      const deltaX = snappedX - plant.x;
+                      const deltaY = snappedY - plant.y;
+                      
+                      // Reset this element's position (we'll update via state)
+                      e.target.x(plant.x);
+                      e.target.y(plant.y);
+                      
+                      // If this plant is selected, move all selected items
+                      if (selectedPlantIds.has(plant.id)) {
+                        moveSelected(deltaX, deltaY);
+                      } else {
+                        updatePlant(plant.id, { x: snappedX, y: snappedY });
+                      }
                     }}
                   >
                     {/* Spacing circle */}
@@ -1039,16 +1158,10 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
                 <span>Drag to pan</span>
               </div>
 
-          {/* Selected Plant Actions */}
-          {selectedPlantId && (
-            <div className="absolute top-3 right-3 bg-white rounded-lg shadow-lg px-3 py-2 flex items-center gap-2">
-              <span className="text-sm text-gray-500">Selected plant:</span>
-              <button
-                onClick={() => deletePlant(selectedPlantId)}
-                className="flex items-center gap-1 px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-xs"
-              >
-                <Trash2 size={12} /> Delete
-              </button>
+          {/* Selection indicator on canvas */}
+          {(selectedBedIds.size > 0 || selectedPlantIds.size > 0) && (
+            <div className="absolute top-14 right-3 bg-[#4A7C59]/90 backdrop-blur text-white rounded-lg px-3 py-1.5 text-xs font-medium">
+              {selectedBedIds.size + selectedPlantIds.size} selected
             </div>
           )}
         </div>
