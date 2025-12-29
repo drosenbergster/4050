@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { getCommonPurchaseUnits } from '@/lib/unit-conversions';
+import { type ParsedIngredient } from '@/lib/ingredient-parser';
+import IngredientTextInput from './ingredient-text-input';
 import { 
   BookOpen,
   Plus, 
@@ -16,6 +18,7 @@ import {
   ShoppingBag,
   ImagePlus,
   ArrowRight,
+  Search,
   ExternalLink,
   Beaker,
   Tag,
@@ -38,6 +41,8 @@ interface Ingredient {
   purchaseSize: number | null;
   purchaseUnit: string | null;
   purchaseCost: number | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface RecipeIngredient {
@@ -60,6 +65,7 @@ interface Recipe {
   retailPrice: number;
   notes: string | null;
   status: RecipeStatus;
+  batchYield: number | null; // Number of jars this batch makes (null = per-jar mode)
   ingredients: RecipeIngredient[];
   product?: {
     id: string;
@@ -74,19 +80,56 @@ interface Recipe {
 
 type CookbookTab = 'ideas' | 'ready' | 'published';
 
-// Calculate costs for a recipe
-function calculateRecipeCosts(recipe: Recipe) {
-  const ingredientsCost = recipe.ingredients.reduce((sum, ri) => {
-    // Garden ingredients are "free" - they come from the garden!
+// Calculate costs for a recipe (supports batch mode with yield)
+interface RecipeCosts {
+  batchIngredientsCost: number;       // Total cost of all ingredients for the batch
+  perJarIngredientsCost: number | null; // Per-jar ingredient cost (null if no yield)
+  totalCost: number | null;           // Per-jar total cost (null if no yield)
+  profit: number | null;              // Per-jar profit (null if no yield)
+  margin: number | null;              // Margin percentage (null if no yield)
+  hasYield: boolean;                  // Whether yield is set
+  yield: number | null;               // The yield value
+}
+
+function calculateRecipeCosts(recipe: Recipe): RecipeCosts {
+  // Calculate total batch ingredient cost (garden items are free!)
+  const batchIngredientsCost = recipe.ingredients.reduce((sum, ri) => {
     const cost = ri.ingredient.source === 'GARDEN' ? 0 : ri.ingredient.unitCost * ri.quantity;
     return sum + cost;
   }, 0);
-  
-  const totalCost = ingredientsCost + recipe.containerCost + recipe.labelCost + recipe.energyCost;
-  const profit = recipe.retailPrice - totalCost;
-  const margin = recipe.retailPrice > 0 ? (profit / recipe.retailPrice) * 100 : 0;
-  
-  return { ingredientsCost, totalCost, profit, margin };
+
+  // If we have yield, calculate per-jar costs
+  if (recipe.batchYield && recipe.batchYield > 0) {
+    const perJarIngredientsCost = batchIngredientsCost / recipe.batchYield;
+    const totalCost = perJarIngredientsCost + recipe.containerCost + recipe.labelCost + recipe.energyCost;
+    const profit = recipe.retailPrice - totalCost;
+    const margin = recipe.retailPrice > 0 ? (profit / recipe.retailPrice) * 100 : 0;
+
+    return {
+      batchIngredientsCost,
+      perJarIngredientsCost,
+      totalCost,
+      profit,
+      margin,
+      hasYield: true,
+      yield: recipe.batchYield,
+    };
+  }
+
+  // No yield — batch mode, can't calculate per-jar costs
+  // For backward compatibility with old per-jar recipes (batchYield = null),
+  // treat quantities as per-jar amounts
+  return {
+    batchIngredientsCost,
+    perJarIngredientsCost: batchIngredientsCost, // In per-jar mode, batch = per-jar
+    totalCost: batchIngredientsCost + recipe.containerCost + recipe.labelCost + recipe.energyCost,
+    profit: recipe.retailPrice - (batchIngredientsCost + recipe.containerCost + recipe.labelCost + recipe.energyCost),
+    margin: recipe.retailPrice > 0 
+      ? ((recipe.retailPrice - (batchIngredientsCost + recipe.containerCost + recipe.labelCost + recipe.energyCost)) / recipe.retailPrice) * 100 
+      : 0,
+    hasYield: false,
+    yield: null,
+  };
 }
 
 // Format currency
@@ -112,6 +155,8 @@ export default function Cookbook() {
   const [isCreating, setIsCreating] = useState(false);
   const [batchSizes, setBatchSizes] = useState<Record<string, number>>({});
   const [showIngredients, setShowIngredients] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'a-z' | 'z-a'>('a-z');
+  const [searchQuery, setSearchQuery] = useState('');
   const [editingIngredient, setEditingIngredient] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ 
     unitCost: number; 
@@ -189,15 +234,17 @@ export default function Cookbook() {
       published: 'PUBLISHED'
     };
     const targetStatus = statusMap[activeTab];
+    const query = searchQuery.toLowerCase().trim();
     
     return recipes
       .filter(r => (r.status || 'IDEA') === targetStatus)
+      .filter(r => !query || r.name.toLowerCase().includes(query))
       .sort((a, b) => {
-        const marginA = calculateRecipeCosts(a).margin;
-        const marginB = calculateRecipeCosts(b).margin;
-        return marginB - marginA;
+        // Alphabetical sorting
+        const comparison = a.name.localeCompare(b.name);
+        return sortOrder === 'a-z' ? comparison : -comparison;
       });
-  }, [recipes, activeTab]);
+  }, [recipes, activeTab, sortOrder, searchQuery]);
 
   const handleDeleteRecipe = async (id: string) => {
     if (!confirm('Delete this recipe?')) return;
@@ -309,8 +356,8 @@ export default function Cookbook() {
   // Tab configuration
   const tabs: { id: CookbookTab; label: string; count: number }[] = [
     { id: 'ideas', label: '💡 Ideas', count: recipeCounts.ideas },
-    { id: 'ready', label: '✨ Ready', count: recipeCounts.ready },
-    { id: 'published', label: '🏪 Selling', count: recipeCounts.published },
+    { id: 'ready', label: '✨ Almost Ready', count: recipeCounts.ready },
+    { id: 'published', label: '🏪 On The Shelf', count: recipeCounts.published },
   ];
 
   return (
@@ -345,33 +392,65 @@ export default function Cookbook() {
 
       {/* Tab Navigation */}
       <div className="border-b border-[#E5DDD3]">
-        <nav className="flex gap-8" aria-label="Cookbook tabs">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
-                activeTab === tab.id
-                  ? 'text-[#4A7C59]'
-                  : 'text-gray-500 hover:text-[#5C4A3D]'
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                {tab.label}
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  activeTab === tab.id 
-                    ? 'bg-[#E8F0EA] text-[#4A7C59]' 
-                    : 'bg-gray-100 text-gray-500'
-                }`}>
-                  {tab.count}
+        <div className="flex items-center justify-between">
+          <nav className="flex gap-8" aria-label="Cookbook tabs">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
+                  activeTab === tab.id
+                    ? 'text-[#4A7C59]'
+                    : 'text-gray-500 hover:text-[#5C4A3D]'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  {tab.label}
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    activeTab === tab.id 
+                      ? 'bg-[#E8F0EA] text-[#4A7C59]' 
+                      : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {tab.count}
+                  </span>
                 </span>
-              </span>
-              {activeTab === tab.id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4A7C59]" />
+                {activeTab === tab.id && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4A7C59]" />
+                )}
+              </button>
+            ))}
+          </nav>
+          
+          {/* Search & Sort */}
+          <div className="flex items-center gap-3 pb-3">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-32 pl-7 pr-2 py-1 text-sm border border-gray-200 rounded-md focus:outline-none focus:border-[#4A7C59] focus:ring-1 focus:ring-[#4A7C59]/20"
+              />
+              <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={12} />
+                </button>
               )}
+            </div>
+            <button
+              onClick={() => setSortOrder(sortOrder === 'a-z' ? 'z-a' : 'a-z')}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-[#4A7C59] transition-colors"
+              title={sortOrder === 'a-z' ? 'Sorted A→Z' : 'Sorted Z→A'}
+            >
+              {sortOrder === 'a-z' ? 'A→Z' : 'Z→A'}
+              <ChevronDown size={14} className={sortOrder === 'z-a' ? 'rotate-180' : ''} />
             </button>
-          ))}
-        </nav>
+          </div>
+        </div>
       </div>
 
       {/* Ingredients Panel */}
@@ -514,8 +593,8 @@ export default function Cookbook() {
         </div>
       )}
 
-      {/* Recipe Cards */}
-      <div className="space-y-4">
+      {/* Recipe Cards - Compact List with Dividers */}
+      <div className="bg-white rounded-lg border border-[#E5DDD3] divide-y divide-[#E5DDD3]">
         {filteredRecipes.length === 0 ? (
           <div className="bg-white rounded-xl border border-[#E5DDD3] p-12 text-center">
             {activeTab === 'ideas' ? (
@@ -547,48 +626,18 @@ export default function Cookbook() {
             return (
               <div
                 key={recipe.id}
-                className="bg-white rounded-xl border border-[#E5DDD3] overflow-hidden hover:shadow-md transition-shadow"
+                className="overflow-hidden"
               >
-                {/* Recipe Header */}
+                {/* Recipe Header - Clean & Compact */}
                 <div
-                  className="p-4 cursor-pointer"
+                  className="px-4 py-3 cursor-pointer hover:bg-[#FDF8F3] transition-colors"
                   onClick={() => setExpandedRecipe(isExpanded ? null : recipe.id)}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-[#E8F0EA] rounded-lg text-[#4A7C59]">
-                        <Package size={20} />
-                      </div>
-                      <div>
-                        <h3 className="font-serif font-bold text-[#5C4A3D]">{recipe.name}</h3>
-                        <p className="text-xs text-gray-500">{recipe.containerType}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-6">
-                      {/* Quick Stats */}
-                      <div className="hidden sm:flex items-center gap-6 text-sm">
-                        <div className="text-center">
-                          <p className="text-xs text-gray-400 uppercase">Cost</p>
-                          <p className="font-bold text-[#5C4A3D]">{formatCurrency(costs.totalCost)}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-xs text-gray-400 uppercase">Price</p>
-                          <p className="font-bold text-[#5C4A3D]">{formatCurrency(recipe.retailPrice)}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-xs text-gray-400 uppercase">💰 Profit</p>
-                          <p className="font-bold text-[#4A7C59]">{formatCurrency(costs.profit)}</p>
-                        </div>
-                        <div className={`text-center px-3 py-1 rounded-lg ${getMarginStyle(costs.margin).bg}`}>
-                          <p className="text-xs text-gray-400 uppercase">Margin</p>
-                          <p className={`font-bold ${getMarginStyle(costs.margin).color}`}>
-                            {costs.margin.toFixed(0)}%
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    <h3 className="font-medium text-[#5C4A3D]">{recipe.name}</h3>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-400">{recipe.containerType}</span>
+                      {isExpanded ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
                     </div>
                   </div>
                 </div>
@@ -619,16 +668,8 @@ export default function Cookbook() {
                             );
                           })}
                           <li className="flex items-center justify-between text-sm pt-2 border-t border-[#E5DDD3]">
-                            <span>Container ({recipe.containerType})</span>
-                            <span className="text-gray-600">{formatCurrency(recipe.containerCost)}</span>
-                          </li>
-                          <li className="flex items-center justify-between text-sm">
-                            <span>Label</span>
-                            <span className="text-gray-600">{formatCurrency(recipe.labelCost)}</span>
-                          </li>
-                          <li className="flex items-center justify-between text-sm">
-                            <span>Energy/Water</span>
-                            <span className="text-gray-600">{formatCurrency(recipe.energyCost)}</span>
+                            <span>Packaging & Overhead</span>
+                            <span className="text-gray-600">{formatCurrency(recipe.containerCost + recipe.labelCost + recipe.energyCost)}</span>
                           </li>
                         </ul>
                       </div>
@@ -638,38 +679,50 @@ export default function Cookbook() {
                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
                           Batch Calculator
                         </h4>
-                        <div className="bg-white rounded-lg p-4 border border-[#E5DDD3]">
-                          <div className="flex items-center gap-3 mb-4">
-                            <label className="text-sm text-gray-600">How many jars?</label>
-                            <input
-                              type="number"
-                              min="1"
-                              value={batchSize}
-                              onChange={(e) => setBatchSizes({ ...batchSizes, [recipe.id]: parseInt(e.target.value) || 1 })}
-                              className="w-20 px-3 py-1 border border-[#E5DDD3] rounded-lg text-center font-bold"
-                            />
+                        {costs.hasYield && costs.totalCost !== null && costs.profit !== null ? (
+                          <div className="bg-white rounded-lg p-4 border border-[#E5DDD3]">
+                            <div className="flex items-center gap-3 mb-4">
+                              <label className="text-sm text-gray-600">How many jars?</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={batchSize}
+                                onChange={(e) => setBatchSizes({ ...batchSizes, [recipe.id]: parseInt(e.target.value) || 1 })}
+                                className="w-20 px-3 py-1 border border-[#E5DDD3] rounded-lg text-center font-bold"
+                              />
+                            </div>
+                            
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Total Cost:</span>
+                                <span className="font-bold">{formatCurrency(costs.totalCost * batchSize)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Revenue @ {formatCurrency(recipe.retailPrice)}:</span>
+                                <span className="font-bold">{formatCurrency(recipe.retailPrice * batchSize)}</span>
+                              </div>
+                              <div className="flex justify-between pt-2 border-t border-[#E5DDD3]">
+                                <span className="text-gray-600 flex items-center gap-1">
+                                  <Leaf size={14} className="text-green-500" />
+                                  Profit for Donation:
+                                </span>
+                                <span className="font-bold text-green-600 text-lg">
+                                  {formatCurrency(costs.profit * batchSize)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Total Cost:</span>
-                              <span className="font-bold">{formatCurrency(costs.totalCost * batchSize)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Revenue @ {formatCurrency(recipe.retailPrice)}:</span>
-                              <span className="font-bold">{formatCurrency(recipe.retailPrice * batchSize)}</span>
-                            </div>
-                            <div className="flex justify-between pt-2 border-t border-[#E5DDD3]">
-                              <span className="text-gray-600 flex items-center gap-1">
-                                <Leaf size={14} className="text-green-500" />
-                                Profit for Donation:
-                              </span>
-                              <span className="font-bold text-green-600 text-lg">
-                                {formatCurrency(costs.profit * batchSize)}
-                              </span>
-                            </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700">
+                            <p className="flex items-center gap-2">
+                              <span>⚠️</span>
+                              <span>Set batch yield to calculate per-jar costs and profits</span>
+                            </p>
+                            <p className="mt-2 text-xs text-amber-600">
+                              Batch ingredients total: <span className="font-bold">{formatCurrency(costs.batchIngredientsCost)}</span>
+                            </p>
                           </div>
-                        </div>
+                        )}
                         
                         {recipe.notes && (
                           <p className="text-xs text-gray-500 mt-3 italic">{recipe.notes}</p>
@@ -836,13 +889,70 @@ export default function Cookbook() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-medium text-gray-600 mb-1">Image URL</label>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Product Photo</label>
+                                  <div
+                                    className="relative border-2 border-dashed border-[#E5DDD3] rounded-lg p-4 hover:border-[#4A7C59] transition-colors cursor-pointer"
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.classList.add('border-[#4A7C59]', 'bg-[#E8F0EA]');
+                                    }}
+                                    onDragLeave={(e) => {
+                                      e.currentTarget.classList.remove('border-[#4A7C59]', 'bg-[#E8F0EA]');
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.classList.remove('border-[#4A7C59]', 'bg-[#E8F0EA]');
+                                      const file = e.dataTransfer.files[0];
+                                      if (file && file.type.startsWith('image/')) {
+                                        const reader = new FileReader();
+                                        reader.onload = (event) => {
+                                          setProductEdits({ ...productEdits, imageUrl: event.target?.result as string });
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }}
+                                    onClick={() => {
+                                      const input = document.createElement('input');
+                                      input.type = 'file';
+                                      input.accept = 'image/*';
+                                      input.onchange = (e) => {
+                                        const file = (e.target as HTMLInputElement).files?.[0];
+                                        if (file) {
+                                          const reader = new FileReader();
+                                          reader.onload = (event) => {
+                                            setProductEdits({ ...productEdits, imageUrl: event.target?.result as string });
+                                          };
+                                          reader.readAsDataURL(file);
+                                        }
+                                      };
+                                      input.click();
+                                    }}
+                                  >
+                                    {productEdits.imageUrl ? (
+                                      <div className="flex items-center gap-3">
+                                        <img 
+                                          src={productEdits.imageUrl} 
+                                          alt="Preview" 
+                                          className="w-16 h-16 object-cover rounded-lg"
+                                        />
+                                        <div className="text-sm text-gray-500">
+                                          <p className="font-medium text-[#4A7C59]">Click or drop to replace</p>
+                                          <p className="text-xs">or paste a URL below</p>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="text-center text-sm text-gray-500 py-2">
+                                        <ImagePlus size={24} className="mx-auto mb-2 text-gray-400" />
+                                        <p className="font-medium">Drop image here or click to browse</p>
+                                      </div>
+                                    )}
+                                  </div>
                                   <input
                                     type="text"
-                                    value={productEdits.imageUrl}
+                                    value={productEdits.imageUrl.startsWith('data:') ? '' : productEdits.imageUrl}
                                     onChange={(e) => setProductEdits({ ...productEdits, imageUrl: e.target.value })}
-                                    className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg text-sm"
-                                    placeholder="https://..."
+                                    className="w-full mt-2 px-3 py-2 border border-[#E5DDD3] rounded-lg text-sm"
+                                    placeholder="Or paste image URL here..."
                                   />
                                 </div>
                                 <div className="flex justify-end gap-2">
@@ -877,15 +987,30 @@ export default function Cookbook() {
                               /* View Mode */
                               <div className="bg-white rounded-lg p-4 border border-[#E5DDD3]">
                                 <div className="flex gap-4">
-                                  {/* Product Image */}
+                                  {/* Product Image - Clickable to edit */}
                                   <div className="flex-shrink-0">
-                                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100">
+                                    <button
+                                      onClick={() => {
+                                        setEditingProductId(recipe.product!.id);
+                                        setProductEdits({
+                                          name: recipe.product!.name,
+                                          description: recipe.product!.description || '',
+                                          imageUrl: recipe.product!.imageUrl,
+                                          category: recipe.product!.category || ''
+                                        });
+                                      }}
+                                      className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 relative group cursor-pointer border-2 border-transparent hover:border-[#4A7C59] transition-all"
+                                      title="Click to change photo"
+                                    >
                                       <img 
                                         src={recipe.product.imageUrl} 
                                         alt={recipe.product.name}
                                         className="w-full h-full object-cover"
                                       />
-                                    </div>
+                                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <ImagePlus size={20} className="text-white" />
+                                      </div>
+                                    </button>
                                   </div>
                                   
                                   {/* Product Info */}
@@ -1011,6 +1136,7 @@ interface RecipeEditorModalProps {
     energyCost: number;
     retailPrice: number;
     notes: string;
+    batchYield: number | null;
     ingredients: { ingredientId: string; quantity: number }[];
   }) => void;
 }
@@ -1024,9 +1150,48 @@ function RecipeEditorModal({ recipe, ingredients, onClose, onSave }: RecipeEdito
   const [energyCost, setEnergyCost] = useState(recipe?.energyCost || 0.30);
   const [retailPrice, setRetailPrice] = useState(recipe?.retailPrice || 10);
   const [notes, setNotes] = useState(recipe?.notes || '');
-  const [recipeIngredients, setRecipeIngredients] = useState<{ ingredientId: string; quantity: number }[]>(
-    recipe?.ingredients.map(ri => ({ ingredientId: ri.ingredientId, quantity: ri.quantity })) || []
-  );
+  const [batchYield, setBatchYield] = useState<number | null>(recipe?.batchYield ?? null);
+  const [batchYieldUnit, setBatchYieldUnit] = useState('jars'); // Could be jars, lbs, cups, oz, etc.
+  const [parsedIngredients, setParsedIngredients] = useState<ParsedIngredient[]>([]);
+  const [localIngredients, setLocalIngredients] = useState<Ingredient[]>(ingredients);
+  const [showCostDetails, setShowCostDetails] = useState(false);
+  const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
+  const costSectionRef = useRef<HTMLDivElement>(null);
+  const additionalSectionRef = useRef<HTMLDivElement>(null);
+  
+  // Convert existing recipe ingredients to parsed format for initial display
+  const initialParsedLines: ParsedIngredient[] = recipe?.ingredients.map(ri => ({
+    amount: ri.quantity,
+    unit: ri.ingredient.unit,
+    name: ri.ingredient.name,
+    rawLine: `${ri.quantity} ${ri.ingredient.unit} ${ri.ingredient.name}`,
+    matchedIngredient: ri.ingredient as Ingredient,
+  })) || [];
+  
+  // Build recipeIngredients from parsedIngredients for submission
+  const recipeIngredients = parsedIngredients
+    .filter(p => p.matchedIngredient && !p.parseError)
+    .map(p => ({
+      ingredientId: p.matchedIngredient!.id,
+      quantity: p.amount,
+    }));
+    
+  // Handle new ingredient creation
+  const handleCreateIngredient = useCallback(async (ingredientName: string, source: IngredientSource): Promise<Ingredient> => {
+    const res = await fetch('/api/admin/cogs/ingredients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: ingredientName, source }),
+    });
+    
+    if (!res.ok) {
+      throw new Error('Failed to create ingredient');
+    }
+    
+    const newIngredient = await res.json();
+    setLocalIngredients(prev => [...prev, newIngredient]);
+    return newIngredient;
+  }, []);
 
   const containerPresets: Record<string, number> = {
     'Quart Jar': 1.30,
@@ -1037,37 +1202,7 @@ function RecipeEditorModal({ recipe, ingredients, onClose, onSave }: RecipeEdito
     '16oz Bottle': 0.75,
   };
 
-  // Calculate live preview
-  const previewCosts = useMemo(() => {
-    const ingredientsCost = recipeIngredients.reduce((sum, ri) => {
-      const ing = ingredients.find(i => i.id === ri.ingredientId);
-      if (!ing || ing.source === 'GARDEN') return sum;
-      return sum + (ing.unitCost * ri.quantity);
-    }, 0);
-    
-    const totalCost = ingredientsCost + containerCost + labelCost + energyCost;
-    const profit = retailPrice - totalCost;
-    const margin = retailPrice > 0 ? (profit / retailPrice) * 100 : 0;
-    
-    return { ingredientsCost, totalCost, profit, margin };
-  }, [recipeIngredients, ingredients, containerCost, labelCost, energyCost, retailPrice]);
-
-  const addIngredient = () => {
-    if (ingredients.length > 0) {
-      setRecipeIngredients([...recipeIngredients, { ingredientId: ingredients[0].id, quantity: 1 }]);
-    }
-  };
-
-  const updateIngredient = (index: number, field: 'ingredientId' | 'quantity', value: string | number) => {
-    const updated = [...recipeIngredients];
-    updated[index] = { ...updated[index], [field]: value };
-    setRecipeIngredients(updated);
-  };
-
-  const removeIngredient = (index: number) => {
-    setRecipeIngredients(recipeIngredients.filter((_, i) => i !== index));
-  };
-
+  // Calculate live preview with batch/per-jar mode support
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
@@ -1079,6 +1214,7 @@ function RecipeEditorModal({ recipe, ingredients, onClose, onSave }: RecipeEdito
       energyCost,
       retailPrice,
       notes,
+      batchYield,
       ingredients: recipeIngredients
     });
   };
@@ -1088,7 +1224,7 @@ function RecipeEditorModal({ recipe, ingredients, onClose, onSave }: RecipeEdito
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-[#E5DDD3] p-4 flex items-center justify-between">
           <h3 className="font-serif font-bold text-lg text-[#5C4A3D]">
-            {recipe ? 'Edit Recipe' : 'New Recipe'}
+            {recipe ? 'Edit Idea' : 'New Idea'}
           </h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
             <X size={20} />
@@ -1096,207 +1232,225 @@ function RecipeEditorModal({ recipe, ingredients, onClose, onSave }: RecipeEdito
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Basic Info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Recipe Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent"
-                placeholder="e.g., Pepper Jelly"
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent"
-                placeholder="Optional description"
-              />
-            </div>
-          </div>
-
-          {/* Container & Costs */}
+          {/* Recipe Name */}
           <div>
-            <h4 className="text-sm font-bold text-gray-700 mb-3">Packaging & Overhead</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Container Type</label>
-                <select
-                  value={containerType}
-                  onChange={(e) => {
-                    setContainerType(e.target.value);
-                    if (containerPresets[e.target.value]) {
-                      setContainerCost(containerPresets[e.target.value]);
-                    }
-                  }}
-                  className="w-full px-2 py-2 border border-[#E5DDD3] rounded-lg text-sm"
-                >
-                  {Object.keys(containerPresets).map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Container Cost</label>
-                <div className="relative">
-                  <span className="absolute left-2 top-2 text-gray-400">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={containerCost}
-                    onChange={(e) => setContainerCost(parseFloat(e.target.value) || 0)}
-                    className="w-full pl-6 pr-2 py-2 border border-[#E5DDD3] rounded-lg text-sm"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Label Cost</label>
-                <div className="relative">
-                  <span className="absolute left-2 top-2 text-gray-400">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={labelCost}
-                    onChange={(e) => setLabelCost(parseFloat(e.target.value) || 0)}
-                    className="w-full pl-6 pr-2 py-2 border border-[#E5DDD3] rounded-lg text-sm"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Energy/Water</label>
-                <div className="relative">
-                  <span className="absolute left-2 top-2 text-gray-400">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={energyCost}
-                    onChange={(e) => setEnergyCost(parseFloat(e.target.value) || 0)}
-                    className="w-full pl-6 pr-2 py-2 border border-[#E5DDD3] rounded-lg text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Ingredients */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-bold text-gray-700">Ingredients</h4>
-              <button
-                type="button"
-                onClick={addIngredient}
-                className="text-sm text-[#4A7C59] hover:underline flex items-center gap-1"
-              >
-                <Plus size={14} />
-                Add Ingredient
-              </button>
-            </div>
-            <div className="space-y-2">
-              {recipeIngredients.map((ri, index) => {
-                const ing = ingredients.find(i => i.id === ri.ingredientId);
-                return (
-                  <div key={index} className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={ri.quantity}
-                      onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value) || 0)}
-                      className="w-20 px-2 py-2 border border-[#E5DDD3] rounded-lg text-sm text-center"
-                    />
-                    <select
-                      value={ri.ingredientId}
-                      onChange={(e) => updateIngredient(index, 'ingredientId', e.target.value)}
-                      className="flex-1 px-2 py-2 border border-[#E5DDD3] rounded-lg text-sm"
-                    >
-                      {ingredients.map(ing => (
-                        <option key={ing.id} value={ing.id}>
-                          {ing.source === 'GARDEN' ? '🌱 ' : ing.source === 'PACKAGING' ? '📦 ' : ''}{ing.name} ({ing.unit})
-                        </option>
-                      ))}
-                    </select>
-                    <span className="w-16 text-right text-sm text-gray-500">
-                      {ing?.source === 'GARDEN' ? (
-                        <span className="text-green-600">🌱</span>
-                      ) : (
-                        formatCurrency((ing?.unitCost || 0) * ri.quantity)
-                      )}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeIngredient(index)}
-                      className="p-1 text-red-400 hover:text-red-600"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                );
-              })}
-              {recipeIngredients.length === 0 && (
-                <p className="text-sm text-gray-400 italic py-2">No ingredients added yet</p>
-              )}
-            </div>
-          </div>
-
-          {/* Retail Price */}
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Retail Price</label>
-            <div className="relative w-32">
-              <span className="absolute left-3 top-2.5 text-gray-400">$</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={retailPrice}
-                onChange={(e) => setRetailPrice(parseFloat(e.target.value) || 0)}
-                className="w-full pl-7 pr-3 py-2 border border-[#E5DDD3] rounded-lg font-bold text-lg"
-              />
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent text-sm"
-              placeholder="Optional notes about this recipe..."
+            <label className="block text-sm font-medium text-gray-700 mb-1">Recipe Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg focus:ring-2 focus:ring-[#4A7C59] focus:border-transparent"
+              placeholder="e.g., Pepper Jelly"
             />
           </div>
 
-          {/* Live Preview */}
-          <div className="bg-[#E8F0EA] rounded-xl p-4">
-            <h4 className="text-xs font-bold text-[#4A7C59] uppercase tracking-wider mb-3">
-              Cost Preview
-            </h4>
-            <div className="grid grid-cols-4 gap-4 text-center">
-              <div>
-                <p className="text-xs text-gray-500">Ingredients</p>
-                <p className="font-bold text-[#5C4A3D]">{formatCurrency(previewCosts.ingredientsCost)}</p>
+          {/* Ingredients - Natural Text Input */}
+          <div>
+            <IngredientTextInput
+              ingredients={localIngredients}
+              initialLines={initialParsedLines}
+              onChange={setParsedIngredients}
+              onCreateIngredient={handleCreateIngredient}
+            />
+          </div>
+
+          {/* Collapsible Additional Details */}
+          <div ref={additionalSectionRef} className="border-t border-[#E5DDD3] pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                const newState = !showAdditionalDetails;
+                setShowAdditionalDetails(newState);
+                if (newState) {
+                  setTimeout(() => {
+                    additionalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 50);
+                }
+              }}
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              {showAdditionalDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              <span>Additional Details</span>
+              {(batchYield || description || notes) && (
+                <span className="text-xs text-gray-400">
+                  {batchYield ? `${batchYield} ${batchYieldUnit}` : ''}
+                  {batchYield && (description || notes) ? ' • ' : ''}
+                  {(description || notes) ? 'has notes' : ''}
+                </span>
+              )}
+            </button>
+            
+            {showAdditionalDetails && (
+              <div className="mt-3 p-4 bg-gray-50 rounded-lg space-y-4">
+                {/* Batch Yield */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Batch Yield</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="any"
+                      placeholder="—"
+                      value={batchYield ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBatchYield(val ? parseFloat(val) : null);
+                      }}
+                      className="w-20 px-3 py-1.5 border border-[#E5DDD3] rounded-lg text-sm"
+                    />
+                    <select
+                      value={batchYieldUnit}
+                      onChange={(e) => setBatchYieldUnit(e.target.value)}
+                      className="px-2 py-1.5 border border-[#E5DDD3] rounded-lg text-sm bg-white"
+                    >
+                      <option value="jars">jars</option>
+                      <option value="lbs">lbs</option>
+                      <option value="oz">oz</option>
+                      <option value="cups">cups</option>
+                      <option value="quarts">quarts</option>
+                      <option value="pints">pints</option>
+                      <option value="bags">bags</option>
+                      <option value="bottles">bottles</option>
+                    </select>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">How much does this batch make?</p>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Description</label>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-[#E5DDD3] rounded-lg text-sm"
+                    placeholder="Brief description for the store"
+                  />
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Notes</label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-1.5 border border-[#E5DDD3] rounded-lg text-sm"
+                    placeholder="Personal notes about this recipe..."
+                  />
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Total Cost</p>
-                <p className="font-bold text-[#5C4A3D]">{formatCurrency(previewCosts.totalCost)}</p>
+            )}
+          </div>
+
+          {/* Collapsible Pricing & Costs Section */}
+          <div ref={costSectionRef} className="border-t border-[#E5DDD3] pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                const newState = !showCostDetails;
+                setShowCostDetails(newState);
+                // Scroll into view when opening
+                if (newState) {
+                  setTimeout(() => {
+                    costSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 50);
+                }
+              }}
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              {showCostDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              <span>Pricing & Packaging</span>
+              <span className="text-xs text-gray-400">
+                ({containerType} • {formatCurrency(retailPrice)}/jar)
+              </span>
+            </button>
+            
+            {showCostDetails && (
+              <div className="mt-3 p-4 bg-gray-50 rounded-lg space-y-4">
+                {/* Jar & Retail Price */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Jar Type</label>
+                    <select
+                      value={containerType}
+                      onChange={(e) => {
+                        setContainerType(e.target.value);
+                        if (containerPresets[e.target.value]) {
+                          setContainerCost(containerPresets[e.target.value]);
+                        }
+                      }}
+                      className="w-full px-2 py-1.5 border border-[#E5DDD3] rounded-lg text-sm bg-white"
+                    >
+                      {Object.keys(containerPresets).map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Retail Price (per jar)</label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1.5 text-gray-400 text-sm">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={retailPrice}
+                        onChange={(e) => setRetailPrice(parseFloat(e.target.value) || 0)}
+                        className="w-full pl-6 pr-2 py-1.5 border border-[#E5DDD3] rounded-lg text-sm font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Overhead Costs */}
+                <div>
+                  <p className="text-xs text-gray-400 mb-2">Per-jar overhead costs</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Container</label>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1.5 text-gray-400 text-sm">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={containerCost}
+                          onChange={(e) => setContainerCost(parseFloat(e.target.value) || 0)}
+                          className="w-full pl-6 pr-2 py-1.5 border border-[#E5DDD3] rounded-lg text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Label</label>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1.5 text-gray-400 text-sm">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={labelCost}
+                          onChange={(e) => setLabelCost(parseFloat(e.target.value) || 0)}
+                          className="w-full pl-6 pr-2 py-1.5 border border-[#E5DDD3] rounded-lg text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Energy</label>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1.5 text-gray-400 text-sm">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={energyCost}
+                          onChange={(e) => setEnergyCost(parseFloat(e.target.value) || 0)}
+                          className="w-full pl-6 pr-2 py-1.5 border border-[#E5DDD3] rounded-lg text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Profit</p>
-                <p className="font-bold text-green-600">{formatCurrency(previewCosts.profit)}</p>
-              </div>
-              <div className={`px-2 py-1 rounded ${getMarginStyle(previewCosts.margin).bg}`}>
-                <p className="text-xs text-gray-500">Margin</p>
-                <p className={`font-bold ${getMarginStyle(previewCosts.margin).color}`}>
-                  {previewCosts.margin.toFixed(0)}%
-                </p>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Actions */}
@@ -1313,7 +1467,7 @@ function RecipeEditorModal({ recipe, ingredients, onClose, onSave }: RecipeEdito
               className="px-6 py-2 bg-[#4A7C59] text-white rounded-lg hover:bg-[#3d6549] transition-colors flex items-center gap-2"
             >
               <Save size={18} />
-              {recipe ? 'Save Changes' : 'Create Recipe'}
+              {recipe ? 'Save Changes' : 'Save Idea'}
             </button>
           </div>
         </form>
@@ -1574,8 +1728,8 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
   const [error, setError] = useState<string | null>(null);
 
   const costs = calculateRecipeCosts(recipe);
-  const estimatedProfit = price - costs.totalCost;
-  const estimatedMargin = price > 0 ? (estimatedProfit / price) * 100 : 0;
+  const estimatedProfit = costs.totalCost !== null ? price - costs.totalCost : null;
+  const estimatedMargin = estimatedProfit !== null && price > 0 ? (estimatedProfit / price) * 100 : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1637,7 +1791,9 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Cost Analysis</h4>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Production Cost</span>
-              <span className="font-medium">{formatCurrency(costs.totalCost)}</span>
+              <span className="font-medium">
+                {costs.totalCost !== null ? formatCurrency(costs.totalCost) : 'Set yield'}
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Retail Price</span>
@@ -1645,9 +1801,13 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
             </div>
             <div className="flex justify-between text-sm border-t border-[#E5DDD3] pt-2">
               <span className="text-gray-600">Estimated Profit</span>
-              <span className={`font-bold ${estimatedProfit > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(estimatedProfit)} ({estimatedMargin.toFixed(0)}%)
-              </span>
+              {estimatedProfit !== null ? (
+                <span className={`font-bold ${estimatedProfit > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(estimatedProfit)} ({estimatedMargin.toFixed(0)}%)
+                </span>
+              ) : (
+                <span className="text-gray-400">Set yield to calculate</span>
+              )}
             </div>
           </div>
 

@@ -82,6 +82,7 @@ export async function PATCH(
     if (data.retailPrice !== undefined) updateData.retailPrice = data.retailPrice;
     if (data.notes !== undefined) updateData.notes = data.notes;
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.batchYield !== undefined) updateData.batchYield = data.batchYield; // null to clear, number to set
     if (data.ingredients) {
       updateData.ingredients = {
         create: data.ingredients.map((ing: { ingredientId: string; quantity: number }) => ({

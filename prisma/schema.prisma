@@ -110,6 +110,7 @@ model CogsRecipe {
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
   status        RecipeStatus           @default(IDEA)
+  batchYield    Int?                   // Number of jars this batch makes (null = per-jar mode)
   ingredients   CogsRecipeIngredient[]
   product       Product?
 

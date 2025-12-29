@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
         retailPrice: data.retailPrice,
         notes: data.notes || null,
         status: data.status || 'IDEA', // Default to IDEA for new recipes
+        batchYield: data.batchYield ?? null, // Optional: number of jars this batch makes
         ingredients: {
           create: data.ingredients?.map((ing: { ingredientId: string; quantity: number }) => ({
             ingredientId: ing.ingredientId,

@@ -92,14 +92,21 @@ export interface CartWithProducts {
 // COGS Calculator Types (Planning Tools)
 // ============================================
 
+export type IngredientSource = 'GARDEN' | 'PANTRY' | 'PACKAGING';
+export type RecipeStatus = 'IDEA' | 'READY' | 'PUBLISHED';
+
 export interface Ingredient {
   id: string;
   name: string;
   unitCost: number;
   unit: string;
-  isFromGarden: boolean;
+  source: IngredientSource;
   category: string | null;
   notes: string | null;
+  // Purchase tracking (what you buy at the store)
+  purchaseSize: number | null;
+  purchaseUnit: string | null;
+  purchaseCost: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -122,6 +129,8 @@ export interface CogsRecipe {
   energyCost: number;
   retailPrice: number;
   notes: string | null;
+  status: RecipeStatus;
+  batchYield: number | null;  // Number of jars this batch makes (null = per-jar mode)
   createdAt: Date;
   updatedAt: Date;
   ingredients: CogsRecipeIngredient[];

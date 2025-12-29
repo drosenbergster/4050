@@ -48,18 +48,23 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json();
     
+    // Validate required field
+    if (!data.name || typeof data.name !== 'string' || !data.name.trim()) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+    
     const ingredient = await prisma.ingredient.create({
       data: {
-        name: data.name,
-        unitCost: data.unitCost,
-        unit: data.unit,
+        name: data.name.trim(),
+        unitCost: data.unitCost ?? 0,           // Default to 0 for inline creation
+        unit: data.unit || 'each',              // Default to 'each' for inline creation
         source: data.source || 'PANTRY',
-        category: data.category || 'Other',
+        category: data.category || null,        // Allow null category
         notes: data.notes || null,
         // Purchase tracking fields
-        purchaseSize: data.purchaseSize || null,
+        purchaseSize: data.purchaseSize ?? null,
         purchaseUnit: data.purchaseUnit || null,
-        purchaseCost: data.purchaseCost || null,
+        purchaseCost: data.purchaseCost ?? null,
       }
     });
 
