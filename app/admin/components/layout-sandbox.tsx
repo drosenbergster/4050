@@ -86,6 +86,7 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
   const [cropSearch, setCropSearch] = useState('');
   const [showAddBedModal, setShowAddBedModal] = useState(false);
   const [selectedCropToPlace, setSelectedCropToPlace] = useState<Crop | null>(null);
+  const [showYieldOverlay, setShowYieldOverlay] = useState(false);
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -1133,14 +1134,38 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
                 <span>Drag to pan</span>
               </div>
 
-              {/* Yield Calculator Overlay */}
+              {/* Yield Calculator Toggle Button */}
               {Object.keys(plantSummary).length > 0 && (
-                <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-[#E5DDD3]/50 p-3 max-w-[200px]">
-                  <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-[#E5DDD3]/50">
-                    <span className="text-sm">🌱</span>
-                    <span className="text-[10px] font-semibold text-[#5C4A3D] uppercase tracking-wider">
-                      {plants.length} Plant{plants.length !== 1 ? 's' : ''}
-                    </span>
+                <button
+                  onClick={() => setShowYieldOverlay(!showYieldOverlay)}
+                  className={`absolute bottom-3 left-3 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                    showYieldOverlay 
+                      ? 'bg-[#4A7C59] text-white shadow-lg' 
+                      : 'bg-white/90 backdrop-blur text-[#5C4A3D] hover:bg-white shadow border border-[#E5DDD3]/50'
+                  }`}
+                  title={showYieldOverlay ? 'Hide yield summary' : 'Show yield summary'}
+                >
+                  <span>🌱</span>
+                  <span>{plants.length}</span>
+                </button>
+              )}
+
+              {/* Yield Calculator Overlay */}
+              {showYieldOverlay && Object.keys(plantSummary).length > 0 && (
+                <div className="absolute bottom-14 left-3 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-[#E5DDD3]/50 p-3 min-w-[180px] max-w-[220px]">
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#E5DDD3]/50">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm">🌱</span>
+                      <span className="text-[10px] font-semibold text-[#5C4A3D] uppercase tracking-wider">
+                        {plants.length} Plant{plants.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setShowYieldOverlay(false)}
+                      className="text-gray-400 hover:text-gray-600 p-0.5"
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
                   <div className="space-y-1.5">
                     {Object.values(plantSummary).map(({ crop, count, expectedYield }) => (
@@ -1155,23 +1180,14 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
                         <span className="text-[10px] text-gray-400 tabular-nums">
                           ×{count}
                         </span>
+                        {expectedYield > 0 && (
+                          <span className="text-[10px] text-[#4A7C59] font-medium tabular-nums">
+                            ~{expectedYield.toFixed(0)} {crop.yieldUnit}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
-                  {Object.values(plantSummary).some(s => s.expectedYield > 0) && (
-                    <div className="mt-2 pt-2 border-t border-[#E5DDD3]/50">
-                      <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Est. Yield</div>
-                      <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                        {Object.values(plantSummary)
-                          .filter(s => s.expectedYield > 0)
-                          .map(({ crop, expectedYield }) => (
-                            <span key={crop.id} className="text-[10px] text-[#4A7C59] font-medium">
-                              ~{expectedYield.toFixed(0)} {crop.yieldUnit}
-                            </span>
-                          ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
