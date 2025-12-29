@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Stage, Layer, Rect, Circle, Group } from 'react-konva';
+import { Stage, Layer, Rect, Circle, Group, Text } from 'react-konva';
 import Konva from 'konva';
 import {
   Plus,
@@ -99,11 +99,36 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
 
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Track container dimensions to prevent jumping
+  const [containerDimensions, setContainerDimensions] = useState({ width: 800, height: 600 });
 
   // Fetch layouts on mount
   useEffect(() => {
     fetchLayouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
+  // Track container size changes
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const updateDimensions = () => {
+      setContainerDimensions({
+        width: container.clientWidth || 800,
+        height: container.clientHeight || 600,
+      });
+    };
+    
+    // Set initial dimensions
+    updateDimensions();
+    
+    // Use ResizeObserver for efficient tracking
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    resizeObserver.observe(container);
+    
+    return () => resizeObserver.disconnect();
   }, []);
 
   const fetchLayouts = async () => {
@@ -808,8 +833,8 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
         >
           <Stage
             ref={stageRef}
-            width={containerRef.current?.clientWidth || 800}
-            height={containerRef.current?.clientHeight || 600}
+            width={containerDimensions.width}
+            height={containerDimensions.height}
             scaleX={scale}
             scaleY={scale}
             x={position.x}
@@ -920,6 +945,7 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
                 const spacing = crop.spacingInches || 12;
                 const isOverlapping = overlappingPlants.has(plant.id);
                 const isSelected = selectedPlantId === plant.id;
+                const firstLetter = crop.name.charAt(0).toUpperCase();
                 
                 return (
                   <Group
@@ -957,12 +983,23 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
                       strokeWidth={isSelected ? 2 : 1}
                       opacity={0.5}
                     />
-                    {/* Plant dot */}
+                    {/* Plant dot with letter */}
                     <Circle
-                      radius={4}
+                      radius={8}
                       fill={crop.color}
-                      stroke={isSelected ? '#fff' : 'transparent'}
-                      strokeWidth={2}
+                      stroke={isSelected ? '#fff' : 'rgba(255,255,255,0.5)'}
+                      strokeWidth={isSelected ? 3 : 2}
+                    />
+                    {/* First letter of crop name */}
+                    <Text
+                      text={firstLetter}
+                      fontSize={10}
+                      fontStyle="bold"
+                      fill="white"
+                      align="center"
+                      verticalAlign="middle"
+                      offsetX={3}
+                      offsetY={5}
                     />
                   </Group>
                 );

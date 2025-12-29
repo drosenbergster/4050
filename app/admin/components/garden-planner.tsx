@@ -857,7 +857,7 @@ export default function GardenPlanner() {
 
       {/* Layout Sandbox Tab */}
       {activeTab === 'layout' && (
-        <div className="h-[calc(100vh-300px)] min-h-[500px]">
+        <div className="h-[calc(100vh-180px)] min-h-[650px]">
           <LayoutSandbox crops={crops} />
         </div>
       )}
