@@ -93,6 +93,8 @@ export async function PATCH(
     if (data.yieldPerUnit !== undefined) updateData.yieldPerUnit = data.yieldPerUnit;
     if (data.yieldUnit !== undefined) updateData.yieldUnit = data.yieldUnit;
     if (data.lastYearYield !== undefined) updateData.lastYearYield = data.lastYearYield;
+    // Spacing for Layout Sandbox
+    if (data.spacingInches !== undefined) updateData.spacingInches = data.spacingInches;
 
     const crop = await prisma.crop.update({
       where: { id },

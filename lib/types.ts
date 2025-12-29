@@ -167,6 +167,15 @@ export interface Crop {
   color: string;
   notes: string | null;
   
+  // Yield Tracking
+  plantCount: number;
+  yieldPerUnit: number | null;
+  yieldUnit: string;
+  lastYearYield: number | null;
+  
+  // Spacing (for Layout Sandbox)
+  spacingInches: number | null;
+  
   // Relations
   ingredientId: string | null;
   ingredient?: Ingredient | null;
@@ -185,6 +194,41 @@ export interface SeasonalTask {
   year: number;
   notes: string | null;
   sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================
+// Garden Layout Sandbox Types
+// ============================================
+
+export interface GardenBed {
+  id: string;
+  x: number;      // position in inches from top-left of canvas
+  y: number;
+  width: number;  // in inches
+  height: number; // in inches
+  rotation: 0 | 90 | 180 | 270; // degrees, snaps to 90° increments
+}
+
+export interface PlacedPlant {
+  id: string;
+  cropId: string; // references Crop.id
+  x: number;      // position in inches from top-left of canvas
+  y: number;
+}
+
+export interface GardenCanvasData {
+  beds: GardenBed[];
+  plants: PlacedPlant[];
+  width?: number;  // Canvas width in inches (default 600 = 50ft)
+  height?: number; // Canvas height in inches (default 600 = 50ft)
+}
+
+export interface GardenLayout {
+  id: string;
+  name: string;
+  canvasData: GardenCanvasData;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -147,10 +147,13 @@ model Crop {
   ingredientId      String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+  // Yield tracking
   plantCount        Int         @default(0)
   yieldPerUnit      Decimal?    @db.Decimal(10, 2)
   yieldUnit         String      @default("lbs") @db.VarChar(50)
   lastYearYield     Decimal?    @db.Decimal(10, 2)
+  // Spacing for Layout Sandbox
+  spacingInches     Int?        @default(12)
   ingredient        Ingredient? @relation(fields: [ingredientId], references: [id])
 
   @@index([harvestStart])
@@ -173,6 +176,16 @@ model SeasonalTask {
   @@index([year, month])
   @@index([isCompleted])
   @@map("seasonal_tasks")
+}
+
+model GardenLayout {
+  id          String   @id @default(uuid())
+  name        String
+  canvasData  Json     @default("{\"beds\": [], \"plants\": []}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("garden_layouts")
 }
 
 enum FulfillmentMethod {

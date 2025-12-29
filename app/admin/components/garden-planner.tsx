@@ -20,6 +20,11 @@ import {
   Printer,
 } from 'lucide-react';
 
+import dynamic from 'next/dynamic';
+
+// Dynamically import LayoutSandbox to avoid SSR issues with Konva
+const LayoutSandbox = dynamic(() => import('./layout-sandbox'), { ssr: false });
+
 // Types
 interface Crop {
   id: string;
@@ -42,6 +47,8 @@ interface Crop {
   yieldPerUnit: number | null;
   yieldUnit: string;
   lastYearYield: number | null;
+  // Spacing for Layout Sandbox
+  spacingInches: number | null;
   ingredient?: {
     id: string;
     name: string;
@@ -171,7 +178,9 @@ function weekToDate(week: number): string {
   return `${months[month]} ${day}`;
 }
 
-type GardenPlannerTab = 'calendar' | 'harvest';
+import { Grid3X3 } from 'lucide-react';
+
+type GardenPlannerTab = 'calendar' | 'harvest' | 'layout';
 
 export default function GardenPlanner() {
   const [crops, setCrops] = useState<Crop[]>([]);
@@ -468,6 +477,19 @@ export default function GardenPlanner() {
             <div className="flex items-center gap-2">
               <Apple size={16} />
               Potential Harvest
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('layout')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'layout'
+                ? 'border-[#4A7C59] text-[#4A7C59]'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Grid3X3 size={16} />
+              Layout Sandbox
             </div>
           </button>
         </nav>
@@ -830,6 +852,13 @@ export default function GardenPlanner() {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Layout Sandbox Tab */}
+      {activeTab === 'layout' && (
+        <div className="h-[calc(100vh-300px)] min-h-[500px]">
+          <LayoutSandbox crops={crops} />
         </div>
       )}
 

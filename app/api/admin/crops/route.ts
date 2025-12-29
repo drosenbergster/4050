@@ -93,6 +93,8 @@ export async function POST(request: NextRequest) {
         yieldPerUnit: data.yieldPerUnit || null,
         yieldUnit: data.yieldUnit || 'lbs',
         lastYearYield: data.lastYearYield || null,
+        // Spacing for Layout Sandbox
+        spacingInches: data.spacingInches || 12,
       },
       include: {
         ingredient: true,
