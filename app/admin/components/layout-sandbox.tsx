@@ -1138,7 +1138,7 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
               {Object.keys(plantSummary).length > 0 && (
                 <button
                   onClick={() => setShowYieldOverlay(!showYieldOverlay)}
-                  className={`absolute bottom-3 left-3 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`absolute top-3 left-3 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                     showYieldOverlay 
                       ? 'bg-[#4A7C59] text-white shadow-lg' 
                       : 'bg-white/90 backdrop-blur text-[#5C4A3D] hover:bg-white shadow border border-[#E5DDD3]/50'
@@ -1152,7 +1152,7 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
 
               {/* Yield Calculator Overlay */}
               {showYieldOverlay && Object.keys(plantSummary).length > 0 && (
-                <div className="absolute bottom-14 left-3 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-[#E5DDD3]/50 p-3 min-w-[180px] max-w-[220px]">
+                <div className="absolute top-14 left-3 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-[#E5DDD3]/50 p-3 min-w-[180px] max-w-[220px]">
                   <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#E5DDD3]/50">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm">🌱</span>
