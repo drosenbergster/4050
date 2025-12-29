@@ -895,31 +895,6 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
             </div>
           )}
 
-          {/* Summary */}
-          {Object.keys(plantSummary).length > 0 && (
-            <div className="bg-white rounded-xl border border-[#E5DDD3] p-3">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                📊 Summary
-              </h3>
-              <div className="space-y-2">
-                {Object.values(plantSummary).map(({ crop, count, expectedYield }) => (
-                  <div key={crop.id} className="flex items-center gap-2">
-                    <span 
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
-                      style={{ backgroundColor: crop.color }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#5C4A3D] truncate">{crop.name}</p>
-                      <p className="text-xs text-gray-400">
-                        {count} plant{count !== 1 ? 's' : ''}
-                        {expectedYield > 0 && ` • ~${expectedYield.toFixed(0)} ${crop.yieldUnit}`}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
         </div>
 
@@ -1157,6 +1132,48 @@ export default function LayoutSandbox({ crops }: LayoutSandboxProps) {
                 <Move size={12} className="text-gray-400" />
                 <span>Drag to pan</span>
               </div>
+
+              {/* Yield Calculator Overlay */}
+              {Object.keys(plantSummary).length > 0 && (
+                <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-[#E5DDD3]/50 p-3 max-w-[200px]">
+                  <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-[#E5DDD3]/50">
+                    <span className="text-sm">🌱</span>
+                    <span className="text-[10px] font-semibold text-[#5C4A3D] uppercase tracking-wider">
+                      {plants.length} Plant{plants.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {Object.values(plantSummary).map(({ crop, count, expectedYield }) => (
+                      <div key={crop.id} className="flex items-center gap-2">
+                        <span 
+                          className="w-2 h-2 rounded-full flex-shrink-0 ring-1 ring-white shadow-sm" 
+                          style={{ backgroundColor: crop.color }}
+                        />
+                        <span className="text-[11px] text-[#5C4A3D] font-medium flex-1 truncate">
+                          {crop.name}
+                        </span>
+                        <span className="text-[10px] text-gray-400 tabular-nums">
+                          ×{count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {Object.values(plantSummary).some(s => s.expectedYield > 0) && (
+                    <div className="mt-2 pt-2 border-t border-[#E5DDD3]/50">
+                      <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Est. Yield</div>
+                      <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+                        {Object.values(plantSummary)
+                          .filter(s => s.expectedYield > 0)
+                          .map(({ crop, expectedYield }) => (
+                            <span key={crop.id} className="text-[10px] text-[#4A7C59] font-medium">
+                              ~{expectedYield.toFixed(0)} {crop.yieldUnit}
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
           {/* Selection indicator on canvas */}
           {(selectedBedIds.size > 0 || selectedPlantIds.size > 0) && (
