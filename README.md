@@ -2,17 +2,18 @@
 
 Heritage apple products e-commerce platform built with Next.js. Sell homemade artisan products (applesauce, apple butter, jams, jellies) while supporting local communities through charitable giving.
 
+**Live Site:** https://4050.vercel.app
+
 ## Tech Stack
 
-- **Framework:** Next.js 16.0.5 (App Router)
+- **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript 5.x (strict mode)
 - **Styling:** Tailwind CSS 4.x
-- **Database:** PostgreSQL 15+ with Prisma ORM
-- **Authentication:** NextAuth.js v5
+- **Database:** PostgreSQL (Supabase) with Prisma ORM
+- **Authentication:** NextAuth.js (Google OAuth)
 - **Payments:** Stripe
 - **Email:** Resend
-- **Shipping:** EasyPost
-- **Deployment:** Vercel + Railway
+- **Deployment:** Vercel
 
 ## Prerequisites
 
@@ -101,22 +102,25 @@ npm run test         # Run tests (coming soon)
 
 ```
 4050/
-├── app/                    # Next.js App Router pages
-│   ├── layout.tsx          # Root layout
+├── app/                    # Next.js App Router
 │   ├── page.tsx            # Homepage
 │   ├── shop/               # Product catalog
-│   ├── cart/               # Shopping cart
+│   ├── basket/             # Shopping basket
 │   ├── checkout/           # Checkout flow
+│   ├── about/              # About page
+│   ├── impact/             # Community impact
 │   ├── admin/              # Admin dashboard
+│   │   └── components/     # Admin UI components
 │   └── api/                # API routes
-├── components/             # React components
-├── lib/                    # Utilities and types
-├── prisma/                 # Database schema
+├── lib/                    # Shared utilities
+│   └── server/             # Server-only code (db, auth, mail)
+├── prisma/                 # Database schema & migrations
 ├── public/                 # Static assets
 └── docs/                   # Documentation
-    ├── brief.md            # Project brief
-    ├── prd.md              # Product requirements
-    └── architecture.md     # Technical architecture
+    ├── architecture/       # Technical docs
+    ├── stories/            # User stories
+    ├── setup/              # Setup guides
+    └── archive/            # Historical docs
 ```
 
 ## Development Workflow

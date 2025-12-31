@@ -104,9 +104,24 @@
 - [x] Updated source-tree.md documentation
 - [x] Products tab removed from admin nav (merged into Cookbook)
 
-## Pending / Blocked
+### Security Hardening (Dec 30, 2025) 🔐
+- [x] **API Authentication**: Fixed `/api/products` POST endpoint (now requires auth)
+- [x] **Security Headers**: Added X-XSS-Protection, Permissions-Policy, HSTS, etc.
+- [x] **npm Vulnerabilities**: Fixed all (0 vulnerabilities)
+- [x] **Supabase RLS**: Enabled Row Level Security on all 10 tables
+- [x] **RLS Policies**: Public read for products, service-role-only for admin tables
+- [x] **Function Security**: Fixed search_path warning
+
+### Documentation Cleanup (Dec 30, 2025) 📚
+- [x] Reorganized root .md files into `docs/setup/` and `docs/archive/`
+- [x] Removed unused `tools/` directory
+- [x] Updated security-audit.md with completed fixes
+- [x] Updated source-tree.md with current structure
+
+## Pending / Recommended
 - [ ] **Stripe Live Mode**: Awaiting live API keys for production testing
-- [ ] **Image Upload**: Currently using URLs, could add file upload
+- [ ] **Privacy Policy**: Create `/privacy` page (legal recommendation)
+- [ ] **Rate Limiting**: Consider for auth endpoints (security recommendation)
 
 ## Next Steps
 1. **"What Can I Make" Feature**: Show recipes you can make from expected harvest
@@ -114,5 +129,4 @@
 3. **Product Content Pass**: Refine heritage descriptions for current harvest
 
 ## Known Issues
-- `prisma.config.ts` causes build noise but deployment works
-- Hydration errors in Checkout (FIXED - using `mounted` state)
+- None currently blocking
