@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
+import { getAuthSession } from '@/lib/server/auth';
 
 export async function GET() {
   try {
@@ -16,18 +17,30 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  // TODO: Add authentication check here (verify admin session)
+  // Require authenticated admin session
+  const session = await getAuthSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   
   try {
     const body = await request.json();
     const { name, description, price, imageUrl, isAvailable } = body;
 
+    // Basic input validation
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return NextResponse.json({ error: 'Product name is required' }, { status: 400 });
+    }
+    if (typeof price !== 'number' || price < 0) {
+      return NextResponse.json({ error: 'Valid price is required' }, { status: 400 });
+    }
+
     const product = await prisma.product.create({
       data: {
-        name,
-        description,
+        name: name.trim(),
+        description: description || '',
         price,
-        imageUrl,
+        imageUrl: imageUrl || '',
         isAvailable: isAvailable ?? true,
       },
     });
