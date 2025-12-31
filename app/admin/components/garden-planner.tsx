@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Calendar,
   ChevronLeft,
@@ -197,32 +197,33 @@ export default function GardenPlanner() {
   const currentWeek = getCurrentWeek();
   const currentMonth = new Date().getMonth();
 
-  // Fetch data
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const [cropsRes, tasksRes] = await Promise.all([
-          fetch('/api/admin/crops'),
-          fetch(`/api/admin/tasks?year=${selectedYear}`)
-        ]);
+  // Fetch data - defined with useCallback to allow reuse after mutations
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [cropsRes, tasksRes] = await Promise.all([
+        fetch('/api/admin/crops'),
+        fetch(`/api/admin/tasks?year=${selectedYear}`)
+      ]);
 
-        if (cropsRes.ok) {
-          const cropsData = await cropsRes.json();
-          setCrops(cropsData);
-        }
-        if (tasksRes.ok) {
-          const tasksData = await tasksRes.json();
-          setTasks(tasksData);
-        }
-      } catch (error) {
-        console.error('Failed to fetch planner data:', error);
-      } finally {
-        setIsLoading(false);
+      if (cropsRes.ok) {
+        const cropsData = await cropsRes.json();
+        setCrops(cropsData);
       }
-    };
-    fetchData();
+      if (tasksRes.ok) {
+        const tasksData = await tasksRes.json();
+        setTasks(tasksData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch planner data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [selectedYear]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Toggle task completion
   const toggleTask = async (taskId: string, currentStatus: boolean) => {
