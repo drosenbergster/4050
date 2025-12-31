@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored tools
+    "tools/**",
   ]),
   // Custom rule overrides
   {

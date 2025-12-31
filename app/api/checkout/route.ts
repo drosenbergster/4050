@@ -4,11 +4,6 @@ import Stripe from 'stripe';
 import { Product } from '@/lib/types';
 import { sendOrderConfirmationEmail } from '@/lib/server/mail';
 
-type CheckoutItemInput = {
-    productId: string;
-    quantity: number;
-};
-
 // Initialize Stripe lazily to avoid crashing the build when STRIPE_SECRET_KEY is unset.
 // (Vercel builds import route modules; throwing at import time fails the deployment.)
 const getStripe = () => {

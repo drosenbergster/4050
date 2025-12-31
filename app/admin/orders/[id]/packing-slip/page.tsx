@@ -3,6 +3,12 @@ import { prisma } from '@/lib/server/db';
 import { getAuthSession } from '@/lib/server/auth';
 import { formatDateTime, formatPrice } from '@/lib/format';
 import { PrintActions } from './print-actions';
+import type { ShippingAddress } from '@/lib/types';
+
+// Extended order type to include optional fields that may exist in the database
+type OrderWithExtras = {
+  extraSupportAmount?: number | null;
+};
 
 export default async function PackingSlipPage({
   params,
@@ -41,7 +47,7 @@ export default async function PackingSlipPage({
   }
 
   const shippingAddress =
-    order.fulfillmentMethod === 'SHIPPING' ? (order.shippingAddress as any) : null;
+    order.fulfillmentMethod === 'SHIPPING' ? (order.shippingAddress as unknown as ShippingAddress) : null;
 
   return (
     <div className="mx-auto max-w-3xl p-6 print:p-0">
@@ -92,10 +98,10 @@ export default async function PackingSlipPage({
                   <span className="font-semibold">{formatPrice(order.shippingCost)}</span>
                 </div>
               )}
-              {(order as any).extraSupportAmount && (order as any).extraSupportAmount > 0 && (
+              {(order as unknown as OrderWithExtras).extraSupportAmount && (order as unknown as OrderWithExtras).extraSupportAmount! > 0 && (
                 <div className="mt-1 flex items-center justify-between">
                   <span>Extra Support</span>
-                  <span className="font-semibold">{formatPrice((order as any).extraSupportAmount)}</span>
+                  <span className="font-semibold">{formatPrice((order as unknown as OrderWithExtras).extraSupportAmount!)}</span>
                 </div>
               )}
               <div className="mt-2 border-t border-gray-200 pt-2 flex items-center justify-between text-base print:border-gray-400">

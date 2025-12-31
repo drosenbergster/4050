@@ -139,7 +139,7 @@ export default function DevAdminDashboard() {
                 } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
             >
               <BookOpen size={18} />
-              Cookbook
+              Kitchen
             </button>
             <button
               onClick={() => setActiveTab('planner')}

@@ -20,7 +20,6 @@ import {
   ArrowRight,
   Search,
   ExternalLink,
-  Beaker,
   Tag,
   PackageCheck,
   PackageX
@@ -137,14 +136,6 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 }
 
-// Get margin styling based on percentage
-function getMarginStyle(margin: number): { color: string; bg: string; label: string } {
-  if (margin >= 80) return { color: 'text-emerald-700', bg: 'bg-emerald-50', label: 'Excellent' };
-  if (margin >= 60) return { color: 'text-green-600', bg: 'bg-green-50', label: 'Good' };
-  if (margin >= 40) return { color: 'text-amber-600', bg: 'bg-amber-50', label: 'OK' };
-  return { color: 'text-red-600', bg: 'bg-red-50', label: 'Review' };
-}
-
 export default function Cookbook() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -155,8 +146,10 @@ export default function Cookbook() {
   const [isCreating, setIsCreating] = useState(false);
   const [batchSizes, setBatchSizes] = useState<Record<string, number>>({});
   const [showIngredients, setShowIngredients] = useState(false);
+  const [ingredientCategory, setIngredientCategory] = useState<'produce' | 'pantry' | 'spices' | 'other'>('produce');
   const [sortOrder, setSortOrder] = useState<'a-z' | 'z-a'>('a-z');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ 
     unitCost: number; 
@@ -168,6 +161,7 @@ export default function Cookbook() {
   const [isAddingIngredient, setIsAddingIngredient] = useState(false);
   const [publishingRecipe, setPublishingRecipe] = useState<Recipe | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [showCosts, setShowCosts] = useState(false);
   const [productEdits, setProductEdits] = useState<{
     name: string;
     description: string;
@@ -203,16 +197,53 @@ export default function Cookbook() {
     }
   };
 
-  // Group ingredients by category
+  // Smart ingredient categorization (4 categories: produce, pantry, spices, other)
+  const categorizeIngredient = useCallback((ing: Ingredient): 'produce' | 'pantry' | 'spices' | 'other' => {
+    // Garden produce
+    if (ing.source === 'GARDEN') return 'produce';
+    
+    // Check if it's a spice (by name patterns)
+    const spicePatterns = /^(cinnamon|cumin|paprika|oregano|thyme|rosemary|basil|parsley|dill|sage|bay leaf|nutmeg|clove|ginger|turmeric|pepper|cayenne|chili|garlic powder|onion powder|allspice|cardamom|coriander|fennel|mustard seed|vanilla|saffron|spices?)/i;
+    const name = ing.name.toLowerCase();
+    if (spicePatterns.test(name) || name.includes('spice') || name.includes('seasoning') || name.includes('herb')) {
+      return 'spices';
+    }
+    
+    // Packaging goes to "other"
+    if (ing.source === 'PACKAGING') return 'other';
+    
+    // Default pantry items
+    if (ing.source === 'PANTRY') return 'pantry';
+    
+    return 'other';
+  }, []);
+
+  // Group ingredients by smart categories
   const groupedIngredients = useMemo(() => {
-    const groups: Record<string, Ingredient[]> = {};
+    const groups: Record<string, Ingredient[]> = {
+      produce: [],
+      pantry: [],
+      spices: [],
+      other: []
+    };
     ingredients.forEach(ing => {
-      const cat = ing.category || 'Other';
-      if (!groups[cat]) groups[cat] = [];
+      const cat = categorizeIngredient(ing);
       groups[cat].push(ing);
     });
+    // Sort each group alphabetically
+    Object.keys(groups).forEach(key => {
+      groups[key].sort((a, b) => a.name.localeCompare(b.name));
+    });
     return groups;
-  }, [ingredients]);
+  }, [ingredients, categorizeIngredient]);
+
+  // Count ingredients by category for badges
+  const ingredientCounts = useMemo(() => ({
+    produce: groupedIngredients.produce?.length || 0,
+    pantry: groupedIngredients.pantry?.length || 0,
+    spices: groupedIngredients.spices?.length || 0,
+    other: groupedIngredients.other?.length || 0,
+  }), [groupedIngredients]);
 
   // Count recipes by status
   const recipeCounts = useMemo(() => {
@@ -353,11 +384,11 @@ export default function Cookbook() {
     }
   };
 
-  // Tab configuration
+  // Tab configuration - friendly, inviting labels
   const tabs: { id: CookbookTab; label: string; count: number }[] = [
-    { id: 'ideas', label: '💡 Ideas', count: recipeCounts.ideas },
-    { id: 'ready', label: '✨ Almost Ready', count: recipeCounts.ready },
-    { id: 'published', label: '🏪 On The Shelf', count: recipeCounts.published },
+    { id: 'ideas', label: '💡 Dreaming Up', count: recipeCounts.ideas },
+    { id: 'ready', label: '✨ Almost There', count: recipeCounts.ready },
+    { id: 'published', label: '🏪 Ready to Sell', count: recipeCounts.published },
   ];
 
   return (
@@ -367,7 +398,7 @@ export default function Cookbook() {
         <div>
           <h2 className="text-xl font-serif font-bold text-[#5C4A3D] flex items-center gap-2">
             <BookOpen size={24} className="text-[#4A7C59]" />
-            Cookbook
+            Kitchen
           </h2>
           <p className="text-sm text-gray-500 mt-1">
             Your recipes, from idea to shelf
@@ -375,10 +406,14 @@ export default function Cookbook() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setShowIngredients(!showIngredients)}
-            className="px-4 py-2 text-sm font-medium text-[#5C4A3D] bg-white border border-[#E5DDD3] rounded-lg hover:bg-[#FDF8F3] transition-colors"
+            onClick={() => setShowCosts(!showCosts)}
+            className={`px-4 py-2 text-sm font-medium border rounded-lg transition-colors ${
+              showCosts 
+                ? 'bg-[#E8F0EA] text-[#4A7C59] border-[#4A7C59]' 
+                : 'bg-white text-gray-500 border-[#E5DDD3] hover:bg-[#FDF8F3]'
+            }`}
           >
-            {showIngredients ? 'Hide' : 'Show'} Ingredients
+            {showCosts ? 'Hide Costs' : 'Show Costs'}
           </button>
           <button
             onClick={() => setIsCreating(true)}
@@ -393,7 +428,7 @@ export default function Cookbook() {
       {/* Tab Navigation */}
       <div className="border-b border-[#E5DDD3]">
         <div className="flex items-center justify-between">
-          <nav className="flex gap-8" aria-label="Cookbook tabs">
+          <nav className="flex gap-8" aria-label="Kitchen tabs">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -421,26 +456,37 @@ export default function Cookbook() {
             ))}
           </nav>
           
-          {/* Search & Sort */}
-          <div className="flex items-center gap-3 pb-3">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-32 pl-7 pr-2 py-1 text-sm border border-gray-200 rounded-md focus:outline-none focus:border-[#4A7C59] focus:ring-1 focus:ring-[#4A7C59]/20"
-              />
-              <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-              {searchQuery && (
+          {/* Search & Sort - Minimal */}
+          <div className="flex items-center gap-2 pb-3">
+            {showSearch ? (
+              <div className="relative animate-in slide-in-from-right-2 duration-200">
+                <input
+                  type="text"
+                  placeholder="Search recipes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                  className="w-40 pl-3 pr-8 py-1.5 text-sm border border-[#4A7C59] rounded-full focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/20 bg-white"
+                />
                 <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setShowSearch(false);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <X size={12} />
+                  <X size={14} />
                 </button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowSearch(true)}
+                className="p-1.5 text-gray-400 hover:text-[#4A7C59] hover:bg-[#E8F0EA] rounded-full transition-colors"
+                title="Search recipes"
+              >
+                <Search size={16} />
+              </button>
+            )}
             <button
               onClick={() => setSortOrder(sortOrder === 'a-z' ? 'z-a' : 'a-z')}
               className="flex items-center gap-1 text-xs text-gray-400 hover:text-[#4A7C59] transition-colors"
@@ -453,167 +499,216 @@ export default function Cookbook() {
         </div>
       </div>
 
-      {/* Ingredients Panel */}
-      {showIngredients && (
-        <div className="bg-white rounded-xl border border-[#E5DDD3] p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-serif font-bold text-[#5C4A3D]">Ingredient Library</h3>
-            <div className="flex items-center gap-4">
-              <p className="text-xs text-gray-400">Click to edit</p>
+      {/* Ingredients Panel - Collapsible with Category Tabs */}
+      <div className="bg-white rounded-xl border border-[#E5DDD3] overflow-hidden">
+        {/* Collapsible Header - Always Visible */}
+        <button
+          onClick={() => setShowIngredients(!showIngredients)}
+          className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#FDF8F3] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Package size={16} className="text-[#4A7C59]" />
+            <h3 className="font-serif font-bold text-[#5C4A3D] text-sm">Ingredient Library</h3>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+              {ingredients.length} items
+            </span>
+          </div>
+          <ChevronDown 
+            size={18} 
+            className={`text-gray-400 transition-transform duration-200 ${showIngredients ? 'rotate-180' : ''}`} 
+          />
+        </button>
+
+        {/* Collapsible Content */}
+        {showIngredients && (
+          <div className="px-4 pb-4 border-t border-[#E5DDD3]">
+            {/* Category Tabs */}
+            <div className="flex gap-1 py-3 overflow-x-auto">
+              {[
+                { key: 'produce' as const, icon: '🌱', label: 'Produce' },
+                { key: 'pantry' as const, icon: '🥫', label: 'Pantry' },
+                { key: 'spices' as const, icon: '🌿', label: 'Spices' },
+                { key: 'other' as const, icon: '📦', label: 'Other' },
+              ].map(({ key, icon, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setIngredientCategory(key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                    ingredientCategory === key
+                      ? 'bg-[#4A7C59] text-white shadow-sm'
+                      : 'bg-[#FDF8F3] text-[#5C4A3D] hover:bg-[#E8F0EA]'
+                  }`}
+                >
+                  <span>{icon}</span>
+                  {label}
+                  {ingredientCounts[key] > 0 && (
+                    <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] ${
+                      ingredientCategory === key
+                        ? 'bg-white/20 text-white'
+                        : 'bg-[#E5DDD3] text-[#5C4A3D]'
+                    }`}>
+                      {ingredientCounts[key]}
+                    </span>
+                  )}
+                </button>
+              ))}
+              {/* Add Button */}
               <button
                 onClick={() => setIsAddingIngredient(true)}
-                className="px-3 py-1.5 text-sm font-medium text-[#4A7C59] border border-[#4A7C59] rounded-lg hover:bg-[#E8F0EA] transition-colors flex items-center gap-1"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium text-[#4A7C59] border border-dashed border-[#4A7C59] hover:bg-[#E8F0EA] transition-colors ml-auto"
               >
-                <Plus size={14} />
+                <Plus size={12} />
                 Add
               </button>
             </div>
+
+            {/* Ingredient Chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {(groupedIngredients[ingredientCategory] || []).map(ing => (
+                editingIngredient === ing.id ? (
+                  /* Editing Mode - Inline Popover Style */
+                  <div key={ing.id} className="w-full bg-[#FDF8F3] p-3 rounded-lg border border-[#E5DDD3] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-[#5C4A3D] text-sm">{ing.name}</span>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleSaveIngredient(ing.id)}
+                          className="p-1 text-green-600 hover:bg-green-100 rounded"
+                          title="Save"
+                        >
+                          <Save size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteIngredient(ing.id)}
+                          className="p-1 text-red-400 hover:bg-red-100 rounded"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                        <button
+                          onClick={() => setEditingIngredient(null)}
+                          className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                          title="Cancel"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {ing.source === 'PANTRY' && (
+                      <div className="bg-white rounded-lg p-2 border border-[#E5DDD3]">
+                        <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">What you buy</div>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            placeholder="Qty"
+                            value={editValues.purchaseSize || ''}
+                            onChange={(e) => setEditValues({ ...editValues, purchaseSize: parseFloat(e.target.value) || null })}
+                            className="w-14 px-1.5 py-1 border border-[#E5DDD3] rounded text-xs text-center"
+                          />
+                          <select
+                            value={editValues.purchaseUnit || ''}
+                            onChange={(e) => setEditValues({ ...editValues, purchaseUnit: e.target.value || null })}
+                            className="w-16 px-1 py-1 border border-[#E5DDD3] rounded text-xs bg-white"
+                          >
+                            <option value="">unit</option>
+                            {getCommonPurchaseUnits().map(u => (
+                              <option key={u} value={u}>{u}</option>
+                            ))}
+                          </select>
+                          <span className="text-gray-400 text-xs">@</span>
+                          <span className="text-gray-400">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            value={editValues.purchaseCost || ''}
+                            onChange={(e) => setEditValues({ ...editValues, purchaseCost: parseFloat(e.target.value) || null })}
+                            className="w-14 px-1.5 py-1 border border-[#E5DDD3] rounded text-xs text-right"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {ing.source === 'GARDEN' && (
+                      <p className="text-xs text-green-600">🌱 From the garden — no cost</p>
+                    )}
+                    
+                    {ing.source === 'PACKAGING' && (
+                      <div className="bg-white rounded-lg p-2 border border-[#E5DDD3]">
+                        <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Cost per item</div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-400">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={editValues.unitCost}
+                            onChange={(e) => setEditValues({ ...editValues, unitCost: parseFloat(e.target.value) || 0 })}
+                            className="w-16 px-1.5 py-1 border border-[#E5DDD3] rounded text-xs text-right"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Display Mode - Compact Chip */
+                  <button
+                    key={ing.id}
+                    onClick={() => startEditingIngredient(ing)}
+                    className="px-2.5 py-1 text-xs bg-white border border-[#E5DDD3] rounded-full text-[#5C4A3D] hover:bg-[#FDF8F3] hover:border-[#4A7C59] hover:text-[#4A7C59] transition-all cursor-pointer"
+                  >
+                    {ing.name}
+                  </button>
+                )
+              ))}
+              {(groupedIngredients[ingredientCategory] || []).length === 0 && (
+                <p className="text-xs text-gray-400 italic py-2">
+                  No {ingredientCategory} ingredients yet
+                </p>
+              )}
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {Object.entries(groupedIngredients).map(([category, ings]) => (
-              <div key={category}>
-                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                  {category === 'Garden' ? 'Produce' : category}
-                </h4>
-                <ul className="space-y-0.5">
-                  {ings.map(ing => (
-                    <li key={ing.id} className="text-sm">
-{editingIngredient === ing.id ? (
-                                        /* Editing Mode */
-                                        <div className="bg-[#FDF8F3] p-3 rounded-lg -mx-2 space-y-3">
-                                          <div className="flex items-center justify-between">
-                                            <span className="font-medium text-[#5C4A3D]">
-                                              {ing.name}
-                                            </span>
-                                            <div className="flex gap-1">
-                                              <button
-                                                onClick={() => handleSaveIngredient(ing.id)}
-                                                className="p-1.5 text-green-600 hover:bg-green-50 rounded"
-                                                title="Save"
-                                              >
-                                                <Save size={14} />
-                                              </button>
-                                              <button
-                                                onClick={() => handleDeleteIngredient(ing.id)}
-                                                className="p-1.5 text-red-400 hover:bg-red-50 rounded"
-                                                title="Delete"
-                                              >
-                                                <Trash2 size={14} />
-                                              </button>
-                                              <button
-                                                onClick={() => setEditingIngredient(null)}
-                                                className="p-1.5 text-gray-400 hover:bg-gray-100 rounded"
-                                                title="Cancel"
-                                              >
-                                                <X size={14} />
-                                              </button>
-                                            </div>
-                                          </div>
-                                          
-                                          {ing.source === 'PANTRY' && (
-                                            <div className="bg-white rounded-lg p-2 border border-[#E5DDD3]">
-                                              <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">What you buy</div>
-                                              <div className="flex items-center gap-1 flex-wrap">
-                                                <input
-                                                  type="number"
-                                                  step="0.1"
-                                                  min="0"
-                                                  placeholder="Qty"
-                                                  value={editValues.purchaseSize || ''}
-                                                  onChange={(e) => setEditValues({ ...editValues, purchaseSize: parseFloat(e.target.value) || null })}
-                                                  className="w-14 px-1.5 py-1 border border-[#E5DDD3] rounded text-sm text-center"
-                                                />
-                                                <select
-                                                  value={editValues.purchaseUnit || ''}
-                                                  onChange={(e) => setEditValues({ ...editValues, purchaseUnit: e.target.value || null })}
-                                                  className="w-16 px-1 py-1 border border-[#E5DDD3] rounded text-sm bg-white"
-                                                >
-                                                  <option value="">unit</option>
-                                                  {getCommonPurchaseUnits().map(u => (
-                                                    <option key={u} value={u}>{u}</option>
-                                                  ))}
-                                                </select>
-                                                <span className="text-gray-400 text-xs">@</span>
-                                                <span className="text-gray-400">$</span>
-                                                <input
-                                                  type="number"
-                                                  step="0.01"
-                                                  min="0"
-                                                  placeholder="0.00"
-                                                  value={editValues.purchaseCost || ''}
-                                                  onChange={(e) => setEditValues({ ...editValues, purchaseCost: parseFloat(e.target.value) || null })}
-                                                  className="w-14 px-1.5 py-1 border border-[#E5DDD3] rounded text-sm text-right"
-                                                />
-                                              </div>
-                                              {editValues.purchaseSize && editValues.purchaseUnit && editValues.purchaseCost && (
-                                                <p className="text-[10px] text-gray-400 mt-1">
-                                                  {editValues.purchaseSize} {editValues.purchaseUnit} for ${editValues.purchaseCost.toFixed(2)}
-                                                </p>
-                                              )}
-                                            </div>
-                                          )}
-                                          
-                                          {ing.source === 'GARDEN' && (
-                                            <p className="text-xs text-green-600">🌱 From the garden — no cost</p>
-                                          )}
-                                          
-                                          {ing.source === 'PACKAGING' && (
-                                            <div className="bg-white rounded-lg p-2 border border-[#E5DDD3]">
-                                              <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Cost per item</div>
-                                              <div className="flex items-center gap-1">
-                                                <span className="text-gray-400">$</span>
-                                                <input
-                                                  type="number"
-                                                  step="0.01"
-                                                  min="0"
-                                                  value={editValues.unitCost}
-                                                  onChange={(e) => setEditValues({ ...editValues, unitCost: parseFloat(e.target.value) || 0 })}
-                                                  className="w-16 px-1.5 py-1 border border-[#E5DDD3] rounded text-sm text-right"
-                                                  autoFocus
-                                                />
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        /* Display Mode - Just name, click to edit */
-                                        <div 
-                                          className="cursor-pointer hover:bg-[#FDF8F3] rounded px-2 py-1 -mx-2 transition-colors text-[#5C4A3D] hover:text-[#4A7C59]"
-                                          onClick={() => startEditingIngredient(ing)}
-                                        >
-                                          {ing.name}
-                                        </div>
-                                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Recipe Cards - Compact List with Dividers */}
       <div className="bg-white rounded-lg border border-[#E5DDD3] divide-y divide-[#E5DDD3]">
         {filteredRecipes.length === 0 ? (
-          <div className="bg-white rounded-xl border border-[#E5DDD3] p-12 text-center">
+          <div className="bg-gradient-to-b from-[#FDF8F3] to-white rounded-xl border border-[#E5DDD3] p-12 text-center">
             {activeTab === 'ideas' ? (
               <>
-                <Beaker size={48} className="mx-auto text-[#E5DDD3] mb-4" />
-                <p className="text-lg font-serif text-[#5C4A3D]">No recipe ideas yet</p>
-                <p className="text-sm text-gray-500 mt-1">Start experimenting! Create your first recipe to calculate costs.</p>
+                <div className="text-5xl mb-4">✨</div>
+                <p className="text-lg font-serif text-[#5C4A3D]">Time to dream up something delicious!</p>
+                <p className="text-sm text-gray-500 mt-2 max-w-sm mx-auto">
+                  The best recipes start with a spark of inspiration. What&apos;s growing in the garden? What flavors are calling to you?
+                </p>
+                <button
+                  onClick={() => setIsCreating(true)}
+                  className="mt-6 px-5 py-2 bg-[#4A7C59] text-white rounded-lg hover:bg-[#3d6549] transition-colors text-sm font-medium"
+                >
+                  Start a New Idea
+                </button>
               </>
             ) : activeTab === 'ready' ? (
               <>
-                <ArrowRight size={48} className="mx-auto text-[#E5DDD3] mb-4" />
-                <p className="text-lg font-serif text-[#5C4A3D]">Nothing ready to share yet</p>
-                <p className="text-sm text-gray-500 mt-1">When your recipe ideas are perfected, move them here for final polish.</p>
+                <div className="text-5xl mb-4">🌱</div>
+                <p className="text-lg font-serif text-[#5C4A3D]">Good things take time</p>
+                <p className="text-sm text-gray-500 mt-2 max-w-sm mx-auto">
+                  When your ideas are ready to become real recipes, they&apos;ll show up here for their final touches before hitting the shelf.
+                </p>
               </>
             ) : (
               <>
-                <ShoppingBag size={48} className="mx-auto text-[#E5DDD3] mb-4" />
-                <p className="text-lg font-serif text-[#5C4A3D]">Nothing on the shelf yet</p>
-                <p className="text-sm text-gray-500 mt-1">Published recipes will appear here once they&apos;re live in your store.</p>
+                <div className="text-5xl mb-4">🏪</div>
+                <p className="text-lg font-serif text-[#5C4A3D]">Your shelf awaits!</p>
+                <p className="text-sm text-gray-500 mt-2 max-w-sm mx-auto">
+                  Once your recipes are ready to sell, they&apos;ll appear here. Each one a little jar of love from your kitchen.
+                </p>
               </>
             )}
           </div>
@@ -628,16 +723,21 @@ export default function Cookbook() {
                 key={recipe.id}
                 className="overflow-hidden"
               >
-                {/* Recipe Header - Clean & Compact */}
+                {/* Recipe Header - Ultra Clean */}
                 <div
-                  className="px-4 py-3 cursor-pointer hover:bg-[#FDF8F3] transition-colors"
+                  className="group px-4 py-3 cursor-pointer hover:bg-[#FDF8F3] transition-colors"
                   onClick={() => setExpandedRecipe(isExpanded ? null : recipe.id)}
                 >
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium text-[#5C4A3D]">{recipe.name}</h3>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-400">{recipe.containerType}</span>
-                      {isExpanded ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+                    <div className="flex items-center gap-2">
+                      {/* Jar size only visible on hover or when expanded */}
+                      <span className={`text-xs text-gray-400 transition-opacity duration-200 ${
+                        isExpanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}>
+                        {recipe.containerType}
+                      </span>
+                      <ChevronDown size={16} className={`text-gray-300 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
                   </div>
                 </div>
@@ -645,7 +745,7 @@ export default function Cookbook() {
                 {/* Expanded Details */}
                 {isExpanded && (
                   <div className="border-t border-[#E5DDD3] p-4 bg-[#FDF8F3]">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className={`grid grid-cols-1 ${showCosts ? 'md:grid-cols-2' : ''} gap-6`}>
                       {/* Ingredients Breakdown */}
                       <div>
                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
@@ -661,26 +761,39 @@ export default function Cookbook() {
                                   {ri.ingredient.source === 'PACKAGING' && <span>📦</span>}
                                   {ri.quantity} {ri.ingredient.unit} {ri.ingredient.name}
                                 </span>
-                                <span className={ri.ingredient.source === 'GARDEN' ? 'text-green-600' : 'text-gray-600'}>
-                                  {ri.ingredient.source === 'GARDEN' ? '🌱' : formatCurrency(cost)}
-                                </span>
+                                {showCosts && (
+                                  <span className={ri.ingredient.source === 'GARDEN' ? 'text-green-600' : 'text-gray-600'}>
+                                    {ri.ingredient.source === 'GARDEN' ? '🌱' : formatCurrency(cost)}
+                                  </span>
+                                )}
                               </li>
                             );
                           })}
-                          <li className="flex items-center justify-between text-sm pt-2 border-t border-[#E5DDD3]">
-                            <span>Packaging & Overhead</span>
-                            <span className="text-gray-600">{formatCurrency(recipe.containerCost + recipe.labelCost + recipe.energyCost)}</span>
-                          </li>
+                          {showCosts && (
+                            <li className="flex items-center justify-between text-sm pt-2 border-t border-[#E5DDD3]">
+                              <span>Packaging & Overhead</span>
+                              <span className="text-gray-600">{formatCurrency(recipe.containerCost + recipe.labelCost + recipe.energyCost)}</span>
+                            </li>
+                          )}
                         </ul>
+                        
+                        {/* Notes moved here if costs are hidden */}
+                        {!showCosts && recipe.notes && (
+                          <div className="mt-4 pt-4 border-t border-[#E5DDD3]">
+                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Notes</h4>
+                            <p className="text-sm text-gray-600 italic">{recipe.notes}</p>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Profit Calculator */}
-                      <div>
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                          Batch Calculator
-                        </h4>
-                        {costs.hasYield && costs.totalCost !== null && costs.profit !== null ? (
-                          <div className="bg-white rounded-lg p-4 border border-[#E5DDD3]">
+                      {/* Profit Calculator - Only show if costs enabled */}
+                      {showCosts && (
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                            Recipe Costs
+                          </h4>
+                          {costs.hasYield && costs.totalCost !== null && costs.profit !== null ? (
+                            <div className="bg-white rounded-lg p-4 border border-[#E5DDD3]">
                             <div className="flex items-center gap-3 mb-4">
                               <label className="text-sm text-gray-600">How many jars?</label>
                               <input
@@ -728,6 +841,7 @@ export default function Cookbook() {
                           <p className="text-xs text-gray-500 mt-3 italic">{recipe.notes}</p>
                         )}
                       </div>
+                      )}
                     </div>
 
                     {/* Actions - Different per tab */}
@@ -767,7 +881,7 @@ export default function Cookbook() {
                             className="px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5"
                           >
                             <ArrowRight size={14} className="rotate-180" />
-                            Back to Ideas
+                            Back to Dreaming
                           </button>
                           <div className="flex gap-2">
                             <button
@@ -1491,37 +1605,49 @@ interface AddIngredientModalProps {
   }) => void;
 }
 
+// Category type for the 4 display categories
+type IngredientCategory = 'produce' | 'pantry' | 'spices' | 'other';
+
 function AddIngredientModal({ onClose, onSave }: AddIngredientModalProps) {
   const [name, setName] = useState('');
   const [unitCost, setUnitCost] = useState(0);
   const [unit, setUnit] = useState('cup');
-  const [source, setSource] = useState<IngredientSource>('PANTRY');
-  const [category, setCategory] = useState('Pantry');
+  const [selectedCategory, setSelectedCategory] = useState<IngredientCategory>('pantry');
   // Purchase tracking
   const [purchaseSize, setPurchaseSize] = useState<number | null>(null);
   const [purchaseUnit, setPurchaseUnit] = useState<string | null>(null);
   const [purchaseCost, setPurchaseCost] = useState<number | null>(null);
 
+  // Map display category to database source
+  const getSourceFromCategory = (cat: IngredientCategory): IngredientSource => {
+    if (cat === 'produce') return 'GARDEN';
+    return 'PANTRY'; // pantry, spices, and other all use PANTRY source
+  };
+
+  // Check if this category needs purchase tracking
+  const needsPurchaseTracking = (cat: IngredientCategory): boolean => {
+    return cat === 'pantry' || cat === 'spices' || cat === 'other';
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const source = getSourceFromCategory(selectedCategory);
     onSave({
       name,
       unitCost: source === 'GARDEN' ? 0 : unitCost,
       unit,
       source,
-      category,
-      purchaseSize: source === 'PANTRY' ? purchaseSize : null,
-      purchaseUnit: source === 'PANTRY' ? purchaseUnit : null,
-      purchaseCost: source === 'PANTRY' ? purchaseCost : null,
+      category: selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1), // Capitalize for DB
+      purchaseSize: needsPurchaseTracking(selectedCategory) ? purchaseSize : null,
+      purchaseUnit: needsPurchaseTracking(selectedCategory) ? purchaseUnit : null,
+      purchaseCost: needsPurchaseTracking(selectedCategory) ? purchaseCost : null,
     });
   };
 
-  // Sync category with source
-  const handleSourceChange = (newSource: IngredientSource) => {
-    setSource(newSource);
-    if (newSource === 'GARDEN') setCategory('Produce');
-    else if (newSource === 'PACKAGING') setCategory('Packaging');
-    else setCategory('Pantry');
+  const handleCategoryChange = (cat: IngredientCategory) => {
+    setSelectedCategory(cat);
+    // Reset unit cost for garden produce
+    if (cat === 'produce') setUnitCost(0);
   };
 
   return (
@@ -1549,54 +1675,41 @@ function AddIngredientModal({ onClose, onSave }: AddIngredientModalProps) {
             />
           </div>
 
-          {/* Source Selection */}
+          {/* Category Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Where does this come from?</label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleSourceChange('PANTRY')}
-                className={`p-3 rounded-lg border-2 text-center transition-all ${
-                  source === 'PANTRY' 
-                    ? 'border-[#4A7C59] bg-[#E8F0EA]' 
-                    : 'border-[#E5DDD3] hover:border-gray-300'
-                }`}
-              >
-                <div className="text-sm font-medium">Pantry</div>
-                <div className="text-[10px] text-gray-500">Store-bought</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSourceChange('GARDEN')}
-                className={`p-3 rounded-lg border-2 text-center transition-all ${
-                  source === 'GARDEN' 
-                    ? 'border-green-500 bg-green-50' 
-                    : 'border-[#E5DDD3] hover:border-gray-300'
-                }`}
-              >
-                <div className="text-sm font-medium">Produce</div>
-                <div className="text-[10px] text-gray-500">Homegrown</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSourceChange('PACKAGING')}
-                className={`p-3 rounded-lg border-2 text-center transition-all ${
-                  source === 'PACKAGING' 
-                    ? 'border-amber-500 bg-amber-50' 
-                    : 'border-[#E5DDD3] hover:border-gray-300'
-                }`}
-              >
-                <div className="text-sm font-medium">Packaging</div>
-                <div className="text-[10px] text-gray-500">Jars, lids, etc.</div>
-              </button>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { key: 'produce' as const, icon: '🌱', label: 'Produce', desc: 'Homegrown' },
+                { key: 'pantry' as const, icon: '🥫', label: 'Pantry', desc: 'Store-bought' },
+                { key: 'spices' as const, icon: '🌿', label: 'Spices', desc: 'Herbs & spices' },
+                { key: 'other' as const, icon: '📦', label: 'Other', desc: 'Everything else' },
+              ].map(({ key, icon, label, desc }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleCategoryChange(key)}
+                  className={`p-2.5 rounded-lg border-2 text-center transition-all ${
+                    selectedCategory === key 
+                      ? key === 'produce' 
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-[#4A7C59] bg-[#E8F0EA]'
+                      : 'border-[#E5DDD3] hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-base mb-0.5">{icon}</div>
+                  <div className="text-xs font-medium">{label}</div>
+                  <div className="text-[9px] text-gray-500">{desc}</div>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Cost and Unit - different UI per source */}
-          {source === 'PANTRY' && (
+          {/* Cost and Unit - different UI per category */}
+          {needsPurchaseTracking(selectedCategory) && (
             <div className="bg-[#FDF8F3] rounded-lg p-4 space-y-3">
               <h4 className="text-sm font-medium text-gray-700">
-                What you buy at the store
+                {selectedCategory === 'spices' ? 'Where you buy this' : 'What you buy at the store'}
               </h4>
               <div className="grid grid-cols-3 gap-2">
                 <div>
@@ -1653,27 +1766,10 @@ function AddIngredientModal({ onClose, onSave }: AddIngredientModalProps) {
             </div>
           )}
 
-          {source === 'GARDEN' && (
+          {selectedCategory === 'produce' && (
             <p className="text-sm text-green-700 bg-green-50 rounded-lg p-3">
               🌱 Produce from the garden has no cost — it&apos;s homegrown!
             </p>
-          )}
-
-          {source === 'PACKAGING' && (
-            <div className="bg-[#FDF8F3] rounded-lg p-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cost per item</label>
-              <div className="relative w-32">
-                <span className="absolute left-3 top-2.5 text-gray-400">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={unitCost}
-                  onChange={(e) => setUnitCost(parseFloat(e.target.value) || 0)}
-                  className="w-full pl-7 pr-3 py-2 border border-[#E5DDD3] rounded-lg"
-                />
-              </div>
-            </div>
           )}
 
           {/* Preview */}
@@ -1681,7 +1777,7 @@ function AddIngredientModal({ onClose, onSave }: AddIngredientModalProps) {
             <div className="bg-[#FDF8F3] rounded-lg p-3 text-center">
               <span className="text-sm text-[#5C4A3D] font-medium">{name}</span>
               <span className="text-xs text-gray-400 ml-2">
-                {source === 'GARDEN' ? '(Produce)' : source === 'PACKAGING' ? '(Packaging)' : '(Pantry)'}
+                ({selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)})
               </span>
             </div>
           )}

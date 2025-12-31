@@ -47,7 +47,7 @@ interface Crop {
   yieldPerUnit: number | null;
   yieldUnit: string;
   lastYearYield: number | null;
-  // Spacing for Layout Sandbox
+  // Spacing for Garden Map
   spacingInches: number | null;
   ingredient?: {
     id: string;
@@ -186,7 +186,7 @@ export default function GardenPlanner() {
   const [crops, setCrops] = useState<Crop[]>([]);
   const [tasks, setTasks] = useState<SeasonalTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<GardenPlannerTab>('calendar');
+  const [activeTab, setActiveTab] = useState<GardenPlannerTab>('harvest');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedCrop, setSelectedCrop] = useState<Crop | null>(null);
   const [expandedMonth, setExpandedMonth] = useState<number | null>(new Date().getMonth());
@@ -199,31 +199,30 @@ export default function GardenPlanner() {
 
   // Fetch data
   useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [cropsRes, tasksRes] = await Promise.all([
+          fetch('/api/admin/crops'),
+          fetch(`/api/admin/tasks?year=${selectedYear}`)
+        ]);
+
+        if (cropsRes.ok) {
+          const cropsData = await cropsRes.json();
+          setCrops(cropsData);
+        }
+        if (tasksRes.ok) {
+          const tasksData = await tasksRes.json();
+          setTasks(tasksData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch planner data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     fetchData();
   }, [selectedYear]);
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [cropsRes, tasksRes] = await Promise.all([
-        fetch('/api/admin/crops'),
-        fetch(`/api/admin/tasks?year=${selectedYear}`)
-      ]);
-
-      if (cropsRes.ok) {
-        const cropsData = await cropsRes.json();
-        setCrops(cropsData);
-      }
-      if (tasksRes.ok) {
-        const tasksData = await tasksRes.json();
-        setTasks(tasksData);
-      }
-    } catch (error) {
-      console.error('Failed to fetch planner data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Toggle task completion
   const toggleTask = async (taskId: string, currentStatus: boolean) => {
@@ -463,7 +462,7 @@ export default function GardenPlanner() {
           >
             <div className="flex items-center gap-2">
               <Calendar size={16} />
-              Growing Calendar
+              Planning Calendar
             </div>
           </button>
           <button
@@ -476,7 +475,7 @@ export default function GardenPlanner() {
           >
             <div className="flex items-center gap-2">
               <Apple size={16} />
-              Potential Harvest
+              What&apos;s Growing
             </div>
           </button>
           <button
@@ -489,7 +488,7 @@ export default function GardenPlanner() {
           >
             <div className="flex items-center gap-2">
               <Grid3X3 size={16} />
-              Layout Sandbox
+              Garden Map
             </div>
           </button>
         </nav>
@@ -539,7 +538,7 @@ export default function GardenPlanner() {
         <div className="p-4">
           <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
             <Calendar size={14} />
-            Growing Calendar
+            Planning Calendar
             <span className="ml-auto flex items-center gap-3 font-normal normal-case text-[#8B7355] text-[10px]">
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded" style={{ backgroundColor: PHASE_COLORS_SOLID.seedStart }}></span> Start Indoors</span>
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded" style={{ backgroundColor: PHASE_COLORS_SOLID.transplant }}></span> Transplant</span>
@@ -686,7 +685,7 @@ export default function GardenPlanner() {
         </>
       )}
 
-      {/* Potential Harvest Tab */}
+      {/* What's Growing Tab */}
       {activeTab === 'harvest' && (
         <div className="space-y-6">
           {/* Header */}
@@ -832,7 +831,7 @@ export default function GardenPlanner() {
               {harvestTotals.filter(c => c.expectedYield > 0 && c.recipes.length === 0).length > 0 && (
                 <div className="mt-4 pt-4 border-t border-[#E5DDD3]">
                   <p className="text-xs text-gray-500">
-                    <strong>Tip:</strong> Connect more crops to ingredients in the Cookbook to see recipe possibilities.
+                    <strong>Tip:</strong> Connect more crops to ingredients in the Kitchen to see recipe possibilities.
                     Crops without recipes: {harvestTotals.filter(c => c.expectedYield > 0 && c.recipes.length === 0).map(c => c.name).join(', ')}
                   </p>
                 </div>
@@ -855,7 +854,7 @@ export default function GardenPlanner() {
         </div>
       )}
 
-      {/* Layout Sandbox Tab */}
+      {/* Garden Map Tab */}
       {activeTab === 'layout' && (
         <div className="h-[calc(100vh-180px)] min-h-[650px]">
           <LayoutSandbox crops={crops} />
@@ -1045,25 +1044,21 @@ function CropRow({ crop, currentWeek, onClick, onEdit, onDelete }: {
 // Crop Detail Modal
 function CropDetailModal({ crop, onClose, onEdit }: { crop: Crop; onClose: () => void; onEdit: () => void }) {
   const [fullCrop, setFullCrop] = useState<Crop | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const fetchCropDetails = async () => {
+      try {
+        const res = await fetch(`/api/admin/crops/${crop.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setFullCrop(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch crop details:', error);
+      }
+    };
     fetchCropDetails();
   }, [crop.id]);
-
-  const fetchCropDetails = async () => {
-    try {
-      const res = await fetch(`/api/admin/crops/${crop.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setFullCrop(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch crop details:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const displayCrop = fullCrop || crop;
   const recipes = displayCrop.ingredient?.recipeIngredients?.map(ri => ri.recipe) || [];
@@ -1100,11 +1095,11 @@ function CropDetailModal({ crop, onClose, onEdit }: { crop: Crop; onClose: () =>
         </div>
 
         <div className="p-4 space-y-6">
-          {/* Growing Calendar */}
+          {/* Planning Calendar */}
           <div>
             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
               <Calendar size={14} />
-              Growing Calendar
+              Planning Calendar
             </h4>
             
             <div className="space-y-2 text-sm">
@@ -1228,20 +1223,6 @@ function CropDetailModal({ crop, onClose, onEdit }: { crop: Crop; onClose: () =>
     </div>
   );
 }
-
-// Color options for crops
-const CROP_COLORS = [
-  { name: 'Red', value: '#C41E3A' },
-  { name: 'Tomato', value: '#E74C3C' },
-  { name: 'Orange', value: '#F39C12' },
-  { name: 'Green', value: '#27AE60' },
-  { name: 'Teal', value: '#16A085' },
-  { name: 'Blue', value: '#3498DB' },
-  { name: 'Purple', value: '#9B59B6' },
-  { name: 'Pink', value: '#E91E63' },
-  { name: 'Forest', value: '#4A7C59' },
-  { name: 'Brown', value: '#8B4513' },
-];
 
 // Month helpers for simplified form
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

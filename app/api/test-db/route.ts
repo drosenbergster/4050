@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
-import { getAuthSession } from '@/lib/server/auth';
 
 export async function GET() {
   // Security: Only allow in development OR require authentication in production

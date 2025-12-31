@@ -3,6 +3,7 @@ import { prisma } from '@/lib/server/db';
 import { getAuthSession } from '@/lib/server/auth';
 import { formatDateTime } from '@/lib/format';
 import { PrintActions } from './print-actions';
+import type { ShippingAddress } from '@/lib/types';
 
 export default async function AddressLabelPage({
   params,
@@ -61,7 +62,7 @@ export default async function AddressLabelPage({
     );
   }
 
-  const shippingAddress = order.shippingAddress as any;
+  const shippingAddress = order.shippingAddress as unknown as ShippingAddress;
 
   return (
     <div className="mx-auto max-w-3xl p-6 print:p-0">

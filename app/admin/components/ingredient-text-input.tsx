@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Check, AlertCircle, X, Leaf, Package, ShoppingBag, Plus } from 'lucide-react';
+import { Check, X, Leaf, Package, ShoppingBag, Plus } from 'lucide-react';
 import {
   parseAmountAndUnit,
   findMatchingIngredients,

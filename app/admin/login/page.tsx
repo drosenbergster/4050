@@ -1,11 +1,8 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 
 export default function AdminLogin() {
-  const router = useRouter();
-
   const handleGoogleSignIn = async () => {
     try {
       console.log('Initiating Google sign in...');
