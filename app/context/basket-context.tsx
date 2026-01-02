@@ -13,9 +13,13 @@ interface BasketState {
 }
 
 interface BasketContextType extends BasketState {
-  addToBasket: (product: Product, quantity: number) => void;
-  removeFromBasket: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addToBasket: (
+    product: Product,
+    quantity: number,
+    options?: { variantKey?: string; variantLabel?: string; unitPrice?: number }
+  ) => void;
+  removeFromBasket: (productId: string, variantKey?: string) => void;
+  updateQuantity: (productId: string, quantity: number, variantKey?: string) => void;
   clearBasket: () => void;
   isBasketOpen: boolean;
   toggleBasket: () => void;
@@ -43,7 +47,12 @@ function loadBasketFromStorage(): BasketState {
     if (savedBasket) {
       const parsed = JSON.parse(savedBasket);
       const items = parsed.items || [];
-      const subtotal = items.reduce((sum: number, item: BasketItemWithProduct) => sum + (item.product.price * item.quantity), 0);
+      const subtotal = items.reduce((sum: number, item: BasketItemWithProduct) => {
+        const lineTotal = typeof item.lineTotal === 'number'
+          ? item.lineTotal
+          : ((item.unitPrice ?? item.product.price) * item.quantity);
+        return sum + lineTotal;
+      }, 0);
       const itemCount = items.reduce((count: number, item: BasketItemWithProduct) => count + item.quantity, 0);
       return { items, subtotal, itemCount };
     }
@@ -93,17 +102,29 @@ export function BasketProvider({ children }: { children: ReactNode }) {
     }
   }, [state]);
 
-  const addToBasket = useCallback((product: Product, quantity: number) => {
+  const addToBasket = useCallback((
+    product: Product,
+    quantity: number,
+    options?: { variantKey?: string; variantLabel?: string; unitPrice?: number }
+  ) => {
     setState((prev) => {
-      const existingItemIndex = prev.items.findIndex((item) => item.productId === product.id);
+      const variantKey = options?.variantKey ?? undefined;
+      const existingItemIndex = prev.items.findIndex((item) =>
+        item.productId === product.id && (item.variantKey ?? undefined) === variantKey
+      );
       let newItems;
+      const unitPrice = options?.unitPrice ?? product.price;
 
       if (existingItemIndex >= 0) {
         newItems = [...prev.items];
+        const nextQty = newItems[existingItemIndex].quantity + quantity;
         newItems[existingItemIndex] = {
           ...newItems[existingItemIndex],
-          quantity: newItems[existingItemIndex].quantity + quantity,
-          lineTotal: (newItems[existingItemIndex].quantity + quantity) * product.price
+          quantity: nextQty,
+          unitPrice,
+          variantKey,
+          variantLabel: options?.variantLabel ?? newItems[existingItemIndex].variantLabel,
+          lineTotal: nextQty * unitPrice,
         };
       } else {
         newItems = [
@@ -112,7 +133,10 @@ export function BasketProvider({ children }: { children: ReactNode }) {
             productId: product.id,
             quantity,
             product,
-            lineTotal: quantity * product.price
+            unitPrice,
+            variantKey,
+            variantLabel: options?.variantLabel,
+            lineTotal: quantity * unitPrice,
           }
         ];
       }
@@ -124,7 +148,8 @@ export function BasketProvider({ children }: { children: ReactNode }) {
     });
     // Removed auto-open for better UX
     // setIsBasketOpen(true);
-    setToast({ message: `Added ${quantity} ${product.name} to basket`, isVisible: true });
+    const label = options?.variantLabel ? ` (${options.variantLabel})` : '';
+    setToast({ message: `Added ${quantity} ${product.name}${label} to basket`, isVisible: true });
   }, []);
 
   const showToast = useCallback((message: string) => {
@@ -135,26 +160,31 @@ export function BasketProvider({ children }: { children: ReactNode }) {
     setToast((prev) => ({ ...prev, isVisible: false }));
   }, []);
 
-  const removeFromBasket = useCallback((productId: string) => {
+  const removeFromBasket = useCallback((productId: string, variantKey?: string) => {
     setState((prev) => {
-      const newItems = prev.items.filter((item) => item.productId !== productId);
+      const newItems = prev.items.filter((item) =>
+        !(item.productId === productId && (item.variantKey ?? undefined) === (variantKey ?? undefined))
+      );
       const subtotal = newItems.reduce((sum, item) => sum + item.lineTotal, 0);
       const itemCount = newItems.reduce((count, item) => count + item.quantity, 0);
       return { items: newItems, subtotal, itemCount };
     });
   }, []);
 
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
+  const updateQuantity = useCallback((productId: string, quantity: number, variantKey?: string) => {
     setState((prev) => {
       let newItems;
       if (quantity <= 0) {
-        newItems = prev.items.filter((item) => item.productId !== productId);
-      } else {
-        newItems = prev.items.map((item) =>
-          item.productId === productId
-            ? { ...item, quantity, lineTotal: quantity * item.product.price }
-            : item
+        newItems = prev.items.filter((item) =>
+          !(item.productId === productId && (item.variantKey ?? undefined) === (variantKey ?? undefined))
         );
+      } else {
+        newItems = prev.items.map((item) => {
+          const isMatch = item.productId === productId && (item.variantKey ?? undefined) === (variantKey ?? undefined);
+          if (!isMatch) return item;
+          const unitPrice = item.unitPrice ?? item.product.price;
+          return { ...item, quantity, lineTotal: quantity * unitPrice };
+        });
       }
 
       const subtotal = newItems.reduce((sum, item) => sum + item.lineTotal, 0);

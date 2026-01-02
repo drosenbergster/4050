@@ -12,3 +12,4 @@ ALTER TABLE "cogs_recipes" ADD COLUMN IF NOT EXISTS "batchYield" INTEGER;
 -- - Existing recipes: batchYield = NULL → per-jar mode (quantities are per single jar)
 -- - New recipes: batchYield = N → batch mode (quantities are for whole batch, divide by N for per-jar)
 
+

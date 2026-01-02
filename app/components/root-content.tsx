@@ -70,6 +70,9 @@ export default function RootContent({ children }: { children: React.ReactNode })
                 <Link href="/#impact" className="text-[#D4C5B9] hover:text-white transition-colors text-sm">
                   Our Impact
                 </Link>
+                <Link href="/privacy" className="text-[#D4C5B9] hover:text-white transition-colors text-sm">
+                  Privacy Policy
+                </Link>
               </div>
             </div>
 

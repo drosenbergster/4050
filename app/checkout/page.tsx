@@ -6,8 +6,15 @@ import Image from 'next/image';
 import { useBasket } from '@/app/context/basket-context';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { Loader2, Lock, ArrowRight, ArrowLeft, Coins, Leaf } from 'lucide-react';
-import { CURRENT_CAUSES } from '@/lib/causes';
+import { Loader2, Lock, ArrowRight, ArrowLeft, Coins, Leaf, Shield } from 'lucide-react';
+import Link from 'next/link';
+
+// Cause interface for checkout
+interface Cause {
+  id: string;
+  name: string;
+  description: string;
+}
 
 // Initialize Stripe outside component
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
@@ -98,13 +105,38 @@ export default function CheckoutPage() {
     });
 
     // Impact & Seeds State
-    const [proceedsChoice, setProceedsChoice] = useState(CURRENT_CAUSES[0].id);
+    const [causes, setCauses] = useState<Cause[]>([]);
+    const [isLoadingCauses, setIsLoadingCauses] = useState(true);
+    const [proceedsChoice, setProceedsChoice] = useState('');
     const [extraSupportAmount, setExtraSupportAmount] = useState(0); // in cents
     const [isRoundingUp, setIsRoundingUp] = useState(false);
     const [customAmount, setCustomAmount] = useState('');
 
     useEffect(() => {
         setMounted(true);
+        // Fetch active organizations for causes dropdown
+        const fetchCauses = async () => {
+            try {
+                const res = await fetch('/api/organizations/active');
+                if (res.ok) {
+                    const orgs = await res.json();
+                    const causeList = orgs.map((org: { id: string; name: string; shortDescription: string }) => ({
+                        id: org.id,
+                        name: org.name,
+                        description: org.shortDescription,
+                    }));
+                    setCauses(causeList);
+                    if (causeList.length > 0) {
+                        setProceedsChoice(causeList[0].id);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch causes:', error);
+            } finally {
+                setIsLoadingCauses(false);
+            }
+        };
+        fetchCauses();
     }, []);
 
     // Calculate totals
@@ -164,7 +196,13 @@ export default function CheckoutPage() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    items,
+                    items: items.map((item) => ({
+                        productId: item.productId,
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice,
+                        variantKey: item.variantKey,
+                        variantLabel: item.variantLabel,
+                    })),
                     fulfillmentMethod,
                     customerDetails: {
                         name: formData.name,
@@ -484,14 +522,16 @@ export default function CheckoutPage() {
                                                 className="w-full px-4 py-3 border border-[#D5D8DC] rounded-xl bg-white focus:ring-2 focus:ring-[#4A7C59]/30 focus:border-[#4A7C59] outline-none font-medium text-[#5C4A3D] appearance-none cursor-pointer"
                                                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%238B7355'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.25rem' }}
                                             >
-                                                {CURRENT_CAUSES.map(cause => (
+                                                {isLoadingCauses ? (
+                                                    <option>Loading organizations...</option>
+                                                ) : causes.map(cause => (
                                                     <option key={cause.id} value={cause.id}>
                                                         {cause.name}
                                                     </option>
                                                 ))}
                                             </select>
                                             <p className="text-[11px] sm:text-xs text-[#8B7355] italic px-1 leading-relaxed">
-                                                {CURRENT_CAUSES.find(c => c.id === proceedsChoice)?.description}
+                                                {causes.find(c => c.id === proceedsChoice)?.description}
                                             </p>
                                         </div>
                                     </section>
@@ -505,7 +545,7 @@ export default function CheckoutPage() {
                                             <h3 className="text-xl font-serif font-bold text-[#5C4A3D]">Sow Extra Seeds</h3>
                                         </div>
                                         <p className="text-[#636E72] text-sm mb-6 leading-relaxed">
-                                            If you’d like to help us grow even more support for {CURRENT_CAUSES.find(c => c.id === proceedsChoice)?.name},
+                                            If you&apos;d like to help us grow even more support for {causes.find(c => c.id === proceedsChoice)?.name},
                                             you can sow extra seeds here.
                                         </p>
 
@@ -616,6 +656,14 @@ export default function CheckoutPage() {
                                             <PaymentForm onSuccess={handlePaymentSuccess} />
                                         </Elements>
                                     )}
+                                    
+                                    <div className="mt-6 pt-4 border-t border-[#E5DDD3] flex items-center justify-center gap-2 text-xs text-[#636E72]">
+                                        <Shield size={14} className="text-[#4A7C59]" />
+                                        <span>Your data is protected.</span>
+                                        <Link href="/privacy" className="text-[#4A7C59] hover:underline">
+                                            Privacy Policy
+                                        </Link>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -679,7 +727,7 @@ export default function CheckoutPage() {
                                 </p>
                                 {totalExtra > 0 && (
                                     <p className="text-[10px] text-[#4A7C59] mt-2 text-right italic">
-                                        Thank you for sowing extra seeds to help {CURRENT_CAUSES.find(c => c.id === proceedsChoice)?.name} flourish.
+                                        Thank you for sowing extra seeds to help {causes.find(c => c.id === proceedsChoice)?.name} flourish.
                                     </p>
                                 )}
                             </div>

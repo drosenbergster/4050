@@ -1,11 +1,16 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, Sprout, ArrowRight, Heart, Mail } from 'lucide-react';
 import { useBasket } from '@/app/context/basket-context';
-import { CURRENT_QUARTER_ORGS } from '@/lib/causes';
+
+interface Organization {
+    id: string;
+    name: string;
+    shortDescription: string;
+}
 
 function ThankYouContent() {
     const searchParams = useSearchParams();
@@ -16,7 +21,26 @@ function ThankYouContent() {
     const causeId = searchParams.get('cause');
     const seedCount = searchParams.get('seeds');
     
-    const selectedOrg = CURRENT_QUARTER_ORGS.find(org => org.id === causeId);
+    const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+
+    // Fetch organization name if causeId is present
+    useEffect(() => {
+        if (causeId) {
+            const fetchOrg = async () => {
+                try {
+                    const res = await fetch('/api/organizations/active');
+                    if (res.ok) {
+                        const orgs = await res.json();
+                        const org = orgs.find((o: Organization) => o.id === causeId);
+                        if (org) setSelectedOrg(org);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch organization:', error);
+                }
+            };
+            fetchOrg();
+        }
+    }, [causeId]);
 
     // Clear basket on mount
     useEffect(() => {
@@ -61,8 +85,8 @@ function ThankYouContent() {
                             </p>
                         )}
                         <p className="text-sm text-[#636E72] mt-3">
-                            At the end of this quarter, we&apos;ll tally everyone&apos;s seeds and distribute profits 
-                            proportionally to each organization.
+                            Each season (November and May), we tally everyone&apos;s seeds and distribute profits 
+                            proportionally to each organization. Your kindness adds up!
                         </p>
                     </div>
                 )}
@@ -95,7 +119,7 @@ function ThankYouContent() {
                         Want to see where your seeds grow?
                     </h3>
                     <p className="text-sm text-[#636E72] mb-4">
-                        We send quarterly updates showing how the community&apos;s seeds turned into real support for local organizations.
+                        Each season, we share updates showing how the community&apos;s seeds turned into real support for local organizations.
                     </p>
                     <p className="text-xs text-[#8B7355] italic">
                         Keep an eye on your inbox—if you provided an email, you&apos;re already on our list!

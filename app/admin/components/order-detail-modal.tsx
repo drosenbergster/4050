@@ -1,9 +1,15 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { FulfillmentStatus, OrderWithItems } from '@/lib/types';
 import { X, User, Phone, Mail, MapPin, Package, Leaf, Coins, CheckCircle, Clock } from 'lucide-react';
 import { formatPrice, formatDateTime } from '@/lib/format';
-import { CURRENT_CAUSES } from '@/lib/causes';
+
+interface Cause {
+  id: string;
+  name: string;
+  description: string;
+}
 
 interface OrderDetailModalProps {
   isOpen: boolean;
@@ -18,9 +24,27 @@ export default function OrderDetailModal({
   order,
   onToggleFulfillment,
 }: OrderDetailModalProps) {
+  const [causes, setCauses] = useState<Cause[]>([]);
+
+  // Fetch causes once when modal opens
+  useEffect(() => {
+    if (isOpen && causes.length === 0) {
+      fetch('/api/organizations/active')
+        .then(res => res.json())
+        .then(orgs => {
+          setCauses(orgs.map((org: { id: string; name: string; shortDescription: string }) => ({
+            id: org.id,
+            name: org.name,
+            description: org.shortDescription,
+          })));
+        })
+        .catch(console.error);
+    }
+  }, [isOpen, causes.length]);
+
   if (!isOpen || !order) return null;
 
-  const cause = order.proceedsChoice ? CURRENT_CAUSES.find(c => c.id === order.proceedsChoice) : null;
+  const cause = order.proceedsChoice ? causes.find(c => c.id === order.proceedsChoice) : null;
   const canPrintShipping = order.fulfillmentMethod === 'SHIPPING' && !!order.shippingAddress;
 
   return (

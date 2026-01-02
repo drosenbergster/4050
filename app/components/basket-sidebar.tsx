@@ -88,7 +88,10 @@ export default function BasketSidebar() {
               </div>
             ) : (
               items.map((item) => (
-                <div key={item.productId} className="flex gap-4 pb-6 border-b border-[#E5DDD3] last:border-b-0">
+                <div
+                  key={`${item.productId}:${item.variantKey ?? 'default'}`}
+                  className="flex gap-4 pb-6 border-b border-[#E5DDD3] last:border-b-0"
+                >
                   <div className="relative w-20 h-20 bg-[#F5EDE4] rounded-xl overflow-hidden flex-shrink-0">
                     {item.product.imageUrl ? (
                       <Image
@@ -108,14 +111,17 @@ export default function BasketSidebar() {
                   <div className="flex-1 flex flex-col justify-between">
                     <div>
                       <h3 className="font-serif font-bold text-[#5C4A3D]">{item.product.name}</h3>
+                      {item.variantLabel && (
+                        <p className="text-xs text-[#8B7355]">{item.variantLabel}</p>
+                      )}
                       <p className="text-sm text-[#636E72]">
-                        {formatPrice(item.product.price)}
+                        {formatPrice(item.unitPrice ?? item.product.price)}
                       </p>
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center border border-[#E5DDD3] rounded-lg overflow-hidden bg-white">
                         <button
-                          onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.productId, item.quantity - 1, item.variantKey)}
                           className="p-3 sm:p-2 hover:bg-[#F5EDE4] text-[#636E72] transition-colors active:bg-[#E5DDD3]"
                           aria-label="Decrease quantity"
                         >
@@ -125,7 +131,7 @@ export default function BasketSidebar() {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.productId, item.quantity + 1, item.variantKey)}
                           className="p-3 sm:p-2 hover:bg-[#F5EDE4] text-[#636E72] transition-colors active:bg-[#E5DDD3]"
                           aria-label="Increase quantity"
                         >
@@ -133,7 +139,7 @@ export default function BasketSidebar() {
                         </button>
                       </div>
                       <button
-                        onClick={() => removeFromBasket(item.productId)}
+                        onClick={() => removeFromBasket(item.productId, item.variantKey)}
                         className="text-red-400 hover:text-red-600 p-2 transition-colors"
                         aria-label="Remove item"
                       >

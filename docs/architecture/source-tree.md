@@ -86,6 +86,7 @@ High-level map of the repository to help contributors find things quickly.
 - `lib/format.ts`: Formatting utilities (price, date)
 - `lib/shipping.ts`: Shipping cost calculations
 - `lib/static-data.ts`: Fallback product data for offline mode
+- `lib/product-details.ts`: Static registry for product variants (sizes, ingredients, allergens)
 - `lib/unit-conversions.ts`: Unit conversion system for ingredient costing:
   - Converts between purchase units (lb, oz, gallon) and recipe units (cup, tbsp, tsp)
   - Ingredient-specific density factors (sugar, flour, etc.)

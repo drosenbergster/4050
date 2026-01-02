@@ -27,15 +27,15 @@ export default async function ShopPage() {
   const products = await getProducts();
 
   return (
-    <main className="bg-[#FDF8F3] min-h-screen py-12">
+    <main className="bg-[#FDF8F3] min-h-screen py-6 md:py-8">
       <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto text-center mb-16 px-4">
-          <h1 className="text-5xl md:text-6xl font-serif font-bold text-[#5C4A3D] mb-6">
+        <div className="max-w-3xl mx-auto text-center mb-8 px-4">
+          <h1 className="text-3xl md:text-4xl font-serif font-bold text-[#5C4A3D] mb-3">
             From the Garden
           </h1>
-          <div className="w-24 h-px bg-[#5C4A3D] mx-auto mb-8 opacity-20"></div>
-          <p className="text-xl text-[#636E72] font-serif italic leading-relaxed">
-            The two heritage apple trees in our Pacific Northwest backyard don’t ask permission to be generous. Every season, they provide exactly what we need, and we make exactly what they provide. This is what’s on the counter today.
+          <div className="w-16 h-px bg-[#5C4A3D] mx-auto mb-4 opacity-20"></div>
+          <p className="text-base md:text-lg text-[#636E72] font-serif italic leading-relaxed">
+            The two heritage apple trees in our Pacific Northwest backyard don&apos;t ask permission to be generous. Every season, they provide exactly what we need, and we make exactly what they provide.
           </p>
         </div>
         <ProductGridWithFilters products={products} />

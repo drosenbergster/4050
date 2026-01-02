@@ -4,10 +4,11 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { formatPrice } from '@/lib/format';
-import { ShoppingBag, LogOut, Leaf, CheckCircle, Clock, Truck, Home, Filter, BookOpen, Calendar, Store } from 'lucide-react';
+import { ShoppingBag, LogOut, Leaf, CheckCircle, Clock, Truck, Home, Filter, BookOpen, Calendar, Store, Heart } from 'lucide-react';
 import Cookbook from './components/cookbook';
 import ProductList from './components/product-list';
 import GardenPlanner from './components/garden-planner';
+import OrganizationManager from './components/organization-manager';
 import { CURRENT_CAUSES } from '@/lib/causes';
 import OrderDetailModal from './components/order-detail-modal';
 import { FulfillmentStatus, OrderWithItems } from '@/lib/types';
@@ -15,7 +16,7 @@ import { FulfillmentStatus, OrderWithItems } from '@/lib/types';
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'orders' | 'shop' | 'cogs' | 'planner'>('shop');
+  const [activeTab, setActiveTab] = useState<'orders' | 'shop' | 'cogs' | 'planner' | 'organizations'>('shop');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
@@ -38,7 +39,7 @@ export default function AdminDashboard() {
   }, [status, router]);
 
   useEffect(() => {
-    if (session && activeTab === 'orders') {
+    if (session && (activeTab === 'orders' || activeTab === 'organizations')) {
       fetchOrders();
     }
   }, [session, activeTab]);
@@ -158,6 +159,16 @@ export default function AdminDashboard() {
             >
               <Calendar size={18} />
               Garden Planner
+            </button>
+            <button
+              onClick={() => setActiveTab('organizations')}
+              className={`${activeTab === 'organizations'
+                  ? 'border-[#2C3E50] text-[#2C3E50]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            >
+              <Heart size={18} />
+              Organizations
             </button>
           </nav>
         </div>
@@ -338,8 +349,10 @@ export default function AdminDashboard() {
           <ProductList />
         ) : activeTab === 'cogs' ? (
           <Cookbook />
-        ) : (
+        ) : activeTab === 'planner' ? (
           <GardenPlanner />
+        ) : (
+          <OrganizationManager orders={orders} />
         )}
       </main>
 

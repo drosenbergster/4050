@@ -1,191 +1,87 @@
-import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, Leaf, Users, Sprout, ArrowRight } from 'lucide-react';
+import { MapPin, Clock } from 'lucide-react';
 import ProductPreview from '@/app/components/product-preview';
+import ImpactModal from '@/app/components/impact-modal';
 
 export default function Home() {
   return (
     <div className="flex flex-col">
-      {/* Hero Section */}
-      <section id="home" className="bg-[#FDF8F3] py-16 md:py-24">
+      {/* Hero Section - Compact */}
+      <section className="bg-[#FDF8F3] py-6 md:py-8">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center gap-12">
+          <div className="flex flex-col md:flex-row items-center gap-6 max-w-4xl mx-auto">
             <div className="flex-1 text-center md:text-left">
-              <span className="text-[#4A7C59] font-medium text-sm uppercase tracking-wider">
-                From Our Kitchen to Your Table
-              </span>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-[#5C4A3D] mt-4 mb-6 leading-tight">
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-[#5C4A3D] mb-3 leading-tight">
                 Handpicked. Homemade. Heartfelt.
               </h1>
-              <p className="text-lg text-[#636E72] mb-8 max-w-xl font-serif italic">
-                In our Pacific Northwest backyard, the heritage trees provide. We simply take what’s given and turn it into something to share.
+              <p className="text-sm md:text-base text-[#636E72] font-serif italic">
+                In our Pacific Northwest backyard, the heritage trees provide. We turn what&apos;s given into something to share—and 100% of profits go to community causes.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-                <Link
-                  href="/shop"
-                  className="bg-[#4A7C59] text-white px-8 py-3 rounded-lg font-medium hover:bg-[#3D6649] transition-all hover:-translate-y-0.5 text-center"
-                >
-                  Shop Now
-                </Link>
-                <Link
-                  href="/about"
-                  className="border-2 border-[#4A7C59] text-[#4A7C59] px-8 py-3 rounded-lg font-medium hover:bg-[#4A7C59] hover:text-white transition-all text-center"
-                >
-                  Our Story
-                </Link>
-              </div>
             </div>
-            <div className="flex-1 relative">
-              <div className="relative w-full aspect-square max-w-lg mx-auto">
-                <div className="w-full h-full bg-[#F5EDE4] rounded-2xl flex items-center justify-center overflow-hidden">
+            <div className="flex-shrink-0">
+              <div className="relative w-40 h-40 md:w-48 md:h-48">
+                <div className="w-full h-full bg-[#F5EDE4] rounded-xl overflow-hidden">
                   <Image 
-                    src="https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?w=500&h=500&fit=crop&q=80" 
-                    alt="Large apple trees in a spacious backyard"
-                    width={500}
-                    height={500}
-                    className="w-full h-full object-cover rounded-2xl"
+                    src="https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?w=300&h=300&fit=crop&q=80" 
+                    alt="Heritage apple trees"
+                    width={300}
+                    height={300}
+                    className="w-full h-full object-cover"
                     priority
                     unoptimized
                   />
                 </div>
-                {/* Badge */}
-                <div className="absolute bottom-4 right-4 bg-[#4A7C59] text-white px-4 py-3 rounded-xl shadow-lg">
-                  <div className="text-sm font-medium">100% Profits to</div>
-                  <div className="font-bold">Community Causes</div>
-                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* About Section */}
-      <section id="about" className="bg-white py-16 md:py-24">
+      {/* Products - Right after hero */}
+      <section className="bg-[#FDF8F3] pb-6">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#5C4A3D] mb-4">
-              Our Story
-            </h2>
-            <p className="text-lg text-[#636E72] max-w-2xl mx-auto italic font-serif">
-              The garden doesn’t have a schedule. It just provides. 4050 is our way of making sure none of that generosity goes to waste.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
-            <div className="relative aspect-video bg-[#F5EDE4] rounded-2xl overflow-hidden">
-              <Image 
-                src="https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?w=600&h=400&fit=crop&q=80" 
-                alt="Large gently sloping backyard with heritage apple trees"
-                width={600}
-                height={400}
-                className="w-full h-full object-cover"
-                unoptimized
-              />
-            </div>
-            <div className="space-y-6">
-              <p className="text-[#636E72] leading-relaxed">
-                What started as sharing homemade applesauce with neighbors has grown into a social enterprise 
-                that brings comfort food to your table while making a real difference in our community.
-              </p>
-              <p className="text-[#636E72] leading-relaxed">
-                Every jar represents hours of love, traditional methods passed down through generations, 
-                and a commitment to supporting those in need. When you choose 4050, you&apos;re not just buying 
-                preserves – you&apos;re investing in local families and causes.
-              </p>
-            </div>
-          </div>
-
-          {/* Feature Cards */}
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-[#FDF8F3] rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 bg-[#E8F0EA] rounded-full flex items-center justify-center mx-auto mb-6">
-                <Heart className="text-[#4A7C59]" size={28} />
-              </div>
-              <h3 className="text-xl font-serif font-bold text-[#5C4A3D] mb-3">Made with Love</h3>
-              <p className="text-[#636E72]">
-                Each batch is carefully crafted by Ilene with traditional recipes and care.
-              </p>
-            </div>
-            <div className="bg-[#FDF8F3] rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 bg-[#E8F0EA] rounded-full flex items-center justify-center mx-auto mb-6">
-                <Leaf className="text-[#4A7C59]" size={28} />
-              </div>
-              <h3 className="text-xl font-serif font-bold text-[#5C4A3D] mb-3">Homegrown</h3>
-              <p className="text-[#636E72]">
-                All our produce is grown locally with sustainable, organic practices.
-              </p>
-            </div>
-            <div className="bg-[#FDF8F3] rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 bg-[#E8F0EA] rounded-full flex items-center justify-center mx-auto mb-6">
-                <Users className="text-[#4A7C59]" size={28} />
-              </div>
-              <h3 className="text-xl font-serif font-bold text-[#5C4A3D] mb-3">Community First</h3>
-              <p className="text-[#636E72]">
-                100% of profits support local non-profits and community initiatives.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Products Preview */}
-      <section className="bg-[#FDF8F3] py-16 md:py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#5C4A3D] mb-4">
-              Our Products
-            </h2>
-            <p className="text-lg text-[#636E72] max-w-2xl mx-auto">
-              Each jar is handcrafted with care using traditional methods and the finest homegrown ingredients.
-            </p>
-          </div>
           <ProductPreview />
         </div>
       </section>
 
-      {/* Community Impact & Seeds Teaser */}
-      <section id="impact" className="bg-white py-16 md:py-24">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-[#4A7C59] rounded-2xl p-8 md:p-12 text-white">
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium mb-6">
-                  <Sprout size={16} />
-                  Plant Seeds of Kindness
-                </div>
-                <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">
-                  You Choose Where Help Grows
-                </h2>
-                <p className="text-lg opacity-90 max-w-2xl mx-auto">
-                  Every purchase plants seeds. Every quarter, we tally up all the seeds our community has planted 
-                  and distribute 100% of profits to local organizations—proportionally based on your choices.
-                </p>
-              </div>
+      {/* Impact Banner */}
+      <ImpactModal />
 
-              {/* How it works mini */}
-              <div className="grid sm:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 text-center">
-                  <div className="text-2xl font-bold mb-1">1</div>
-                  <div className="text-sm opacity-90">You shop &amp; earn seeds</div>
+      {/* Local Pickup - Below products */}
+      <section className="bg-white py-8">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <div className="bg-[#FDF8F3] rounded-xl p-5 md:p-6 border border-[#E5DDD3]">
+            <h2 className="text-xl font-serif font-bold text-[#5C4A3D] mb-3 text-center">
+              Local Pickup
+            </h2>
+            <p className="text-sm text-[#636E72] text-center mb-5">
+              For local friends and neighbors, we offer free pickup. Skip the shipping and get your goodies fresh!
+            </p>
+            
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 bg-[#E8F0EA] rounded-full flex items-center justify-center flex-shrink-0">
+                  <MapPin className="text-[#4A7C59]" size={16} />
                 </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 text-center">
-                  <div className="text-2xl font-bold mb-1">2</div>
-                  <div className="text-sm opacity-90">You pick an organization</div>
-                </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 text-center">
-                  <div className="text-2xl font-bold mb-1">3</div>
-                  <div className="text-sm opacity-90">We distribute proportionally</div>
+                <div>
+                  <h3 className="font-bold text-[#5C4A3D] text-sm mb-0.5">Location</h3>
+                  <p className="text-xs text-[#636E72]">
+                    4050 HQ<br/>
+                    <span className="text-[10px]">(Address provided upon order)</span>
+                  </p>
                 </div>
               </div>
-
-              <div className="text-center">
-                <Link
-                  href="/impact"
-                  className="inline-flex items-center gap-2 bg-white text-[#4A7C59] px-8 py-3 rounded-lg font-medium hover:bg-[#F5EDE4] transition-all hover:-translate-y-0.5"
-                >
-                  Learn How Seeds Work
-                  <ArrowRight size={18} />
-                </Link>
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 bg-[#E8F0EA] rounded-full flex items-center justify-center flex-shrink-0">
+                  <Clock className="text-[#4A7C59]" size={16} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[#5C4A3D] text-sm mb-0.5">Hours</h3>
+                  <p className="text-xs text-[#636E72]">
+                    Flexible scheduling<br/>
+                    <span className="text-[10px]">(We&apos;ll coordinate after purchase)</span>
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -193,32 +89,28 @@ export default function Home() {
       </section>
 
       {/* Upcoming Products */}
-      <section className="bg-[#FDF8F3] py-16 md:py-24">
+      <section className="bg-white py-8">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <span className="inline-block bg-[#4A7C59] text-white text-sm font-medium px-4 py-1 rounded-full mb-4">
+          <div className="text-center mb-4">
+            <span className="inline-block bg-[#4A7C59] text-white text-[10px] font-medium px-2.5 py-0.5 rounded-full mb-1.5">
               Coming Soon
             </span>
-            <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#5C4A3D] mb-4">
+            <h2 className="text-lg md:text-xl font-serif font-bold text-[#5C4A3D]">
               Upcoming Products
             </h2>
-            <p className="text-lg text-[#636E72] max-w-2xl mx-auto">
-              Ilene is always experimenting in the kitchen. Here&apos;s what we&apos;re working on next.
-            </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 max-w-3xl mx-auto">
             {[
-              { name: 'Pear Butter', desc: 'Silky smooth pear butter with a hint of vanilla' },
-              { name: 'Strawberry Jam', desc: 'Classic strawberry jam from summer-fresh berries' },
-              { name: 'Apple Pie Filling', desc: 'Ready-to-bake apple pie filling with traditional spices' },
-              { name: 'Spiced Apple Cider Jam', desc: 'Warm spiced jam that captures the essence of fall' },
-              { name: 'Pickled Beets', desc: 'Sweet and tangy pickled beets, perfect as a side' },
-              { name: 'Dried Pear Chips', desc: 'Delicate pear chips, naturally sweet and crispy' },
+              { name: 'Pear Butter' },
+              { name: 'Strawberry Jam' },
+              { name: 'Apple Pie Filling' },
+              { name: 'Spiced Cider Jam' },
+              { name: 'Pickled Beets' },
+              { name: 'Dried Pear Chips' },
             ].map((product) => (
-              <div key={product.name} className="bg-white rounded-xl p-6 border border-[#E5DDD3]">
-                <h3 className="font-serif font-bold text-[#5C4A3D] mb-2">{product.name}</h3>
-                <p className="text-sm text-[#636E72]">{product.desc}</p>
+              <div key={product.name} className="bg-[#FDF8F3] rounded-lg p-2 border border-[#E5DDD3] text-center">
+                <h3 className="text-[10px] sm:text-xs font-serif font-bold text-[#5C4A3D]">{product.name}</h3>
               </div>
             ))}
           </div>

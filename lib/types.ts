@@ -80,6 +80,13 @@ export interface CartItemWithProduct {
   quantity: number;
   product: Product;
   lineTotal: number; // calculated: product.price * quantity
+  /**
+   * Optional variant metadata (e.g. jar size).
+   * When present, checkout will validate and use unitPrice.
+   */
+  variantKey?: string;
+  variantLabel?: string;
+  unitPrice?: number; // in cents (overrides product.price for this cart line)
 }
 
 export interface CartWithProducts {

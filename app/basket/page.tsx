@@ -55,7 +55,10 @@ export default function BasketPage() {
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                             <div className="p-6 space-y-6">
                                 {items.map((item) => (
-                                    <div key={item.productId} className="flex flex-col sm:flex-row gap-6 py-6 border-b border-[#F0E6D2] last:border-0 last:pb-0 first:pt-0">
+                                    <div
+                                        key={`${item.productId}:${item.variantKey ?? 'default'}`}
+                                        className="flex flex-col sm:flex-row gap-6 py-6 border-b border-[#F0E6D2] last:border-0 last:pb-0 first:pt-0"
+                                    >
                                         {/* Product Image */}
                                         <div className="relative w-full sm:w-32 h-32 flex-shrink-0 bg-[#F5EDE4] rounded-lg overflow-hidden">
                                             <Image
@@ -73,15 +76,20 @@ export default function BasketPage() {
                                                     <h3 className="text-lg font-bold text-[#5C4A3D] mb-1">
                                                         {item.product.name}
                                                     </h3>
+                                                    {item.variantLabel && (
+                                                        <div className="text-xs text-[#8B7355] mb-1">
+                                                            {item.variantLabel}
+                                                        </div>
+                                                    )}
                                                     <p className="text-sm text-[#636E72] mb-2 line-clamp-1">
                                                         {item.product.description}
                                                     </p>
                                                     <div className="text-[#E67E22] font-medium">
-                                                        {formatPrice(item.product.price)}
+                                                        {formatPrice(item.unitPrice ?? item.product.price)}
                                                     </div>
                                                 </div>
                                                 <button
-                                                    onClick={() => removeFromBasket(item.productId)}
+                                                    onClick={() => removeFromBasket(item.productId, item.variantKey)}
                                                     className="text-[#95A5A6] hover:text-[#C0392B] transition-colors p-1"
                                                     aria-label="Remove item"
                                                 >
@@ -93,7 +101,7 @@ export default function BasketPage() {
                                             <div className="flex justify-between items-end">
                                                 <div className="flex items-center border border-[#D5D8DC] rounded-lg bg-gray-50">
                                                     <button
-                                                        onClick={() => updateQuantity(item.productId, Math.max(1, item.quantity - 1))}
+                                                        onClick={() => updateQuantity(item.productId, Math.max(1, item.quantity - 1), item.variantKey)}
                                                         className="p-2 text-[#5C4A3D] hover:bg-gray-100 rounded-l-lg transition-colors"
                                                         disabled={item.quantity <= 1}
                                                     >
@@ -103,7 +111,7 @@ export default function BasketPage() {
                                                         {item.quantity}
                                                     </span>
                                                     <button
-                                                        onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                                        onClick={() => updateQuantity(item.productId, item.quantity + 1, item.variantKey)}
                                                         className="p-2 text-[#5C4A3D] hover:bg-gray-100 rounded-r-lg transition-colors"
                                                     >
                                                         <Plus size={16} />

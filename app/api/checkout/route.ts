@@ -3,6 +3,7 @@ import { prisma } from '@/lib/server/db';
 import Stripe from 'stripe';
 import { Product } from '@/lib/types';
 import { sendOrderConfirmationEmail } from '@/lib/server/mail';
+import { getProductDetailsByName } from '@/lib/product-details';
 
 // Initialize Stripe lazily to avoid crashing the build when STRIPE_SECRET_KEY is unset.
 // (Vercel builds import route modules; throwing at import time fails the deployment.)
@@ -115,6 +116,9 @@ export async function POST(request: Request) {
 
             const productId = (rawItem as { productId?: unknown }).productId;
             const quantity = (rawItem as { quantity?: unknown }).quantity;
+            const unitPriceRaw = (rawItem as { unitPrice?: unknown }).unitPrice;
+            const variantLabelRaw = (rawItem as { variantLabel?: unknown }).variantLabel;
+            const variantKeyRaw = (rawItem as { variantKey?: unknown }).variantKey;
 
             if (typeof productId !== 'string' || typeof quantity !== 'number' || quantity <= 0) {
                 return NextResponse.json(
@@ -132,14 +136,42 @@ export async function POST(request: Request) {
                 );
             }
 
-            const lineTotal = product.price * quantity;
+            // Variant-aware pricing: if the client sends unitPrice, validate it against our allowed sizes.
+            let unitPrice = product.price;
+            let productName = product.name;
+
+            if (typeof unitPriceRaw === 'number') {
+                const details = getProductDetailsByName(product.name);
+                if (!details) {
+                    return NextResponse.json(
+                        { error: 'Invalid item pricing. Please refresh your basket.' },
+                        { status: 400 }
+                    );
+                }
+
+                const allowed = details.sizes.some((s) => s.unitPrice === unitPriceRaw && (typeof variantKeyRaw !== 'string' || s.key === variantKeyRaw));
+                if (!allowed) {
+                    return NextResponse.json(
+                        { error: 'Invalid item pricing. Please refresh your basket.' },
+                        { status: 400 }
+                    );
+                }
+
+                unitPrice = unitPriceRaw;
+
+                if (typeof variantLabelRaw === 'string' && variantLabelRaw.trim().length > 0) {
+                    productName = `${product.name} — ${variantLabelRaw.trim()}`;
+                }
+            }
+
+            const lineTotal = unitPrice * quantity;
             subtotal += lineTotal;
 
             orderItemsData.push({
                 productId: product.id,
-                productName: product.name,
+                productName,
                 quantity: quantity,
-                unitPrice: product.price,
+                unitPrice,
                 lineTotal: lineTotal,
             });
         }

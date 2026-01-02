@@ -70,3 +70,4 @@ ALTER TABLE "crops"
     FOREIGN KEY ("ingredientId") REFERENCES "ingredients"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 
+

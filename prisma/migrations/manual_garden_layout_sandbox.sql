@@ -70,3 +70,4 @@ BEGIN
   RAISE NOTICE '   - Created garden_layouts table';
 END $$;
 
+
