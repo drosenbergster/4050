@@ -37,7 +37,7 @@ export default function Navbar() {
             <Link href="/shop" className="text-[#636E72] hover:text-[#4A7C59] transition-colors font-medium">
               Products
             </Link>
-            <Link href="/#impact" className="text-[#636E72] hover:text-[#4A7C59] transition-colors font-medium">
+            <Link href="/impact" className="text-[#636E72] hover:text-[#4A7C59] transition-colors font-medium">
               Our Impact
             </Link>
             <button
@@ -107,7 +107,7 @@ export default function Navbar() {
             Products
           </Link>
           <Link
-            href="/#impact"
+            href="/impact"
             className="text-[#636E72] hover:text-[#4A7C59] text-xl font-serif font-bold transition-colors active:translate-x-1 duration-200"
             onClick={() => setIsMenuOpen(false)}
           >
