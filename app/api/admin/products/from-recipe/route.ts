@@ -86,7 +86,6 @@ export async function POST(request: NextRequest) {
           description,
           imageUrl,
           isAvailable: isAvailable !== undefined ? isAvailable : true,
-          basePrice: priceInCents,
           cogsRecipeId: recipeId,
         },
       });
