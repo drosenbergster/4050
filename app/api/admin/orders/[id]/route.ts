@@ -43,6 +43,12 @@ export async function PATCH(
           // Type assertion for variantKey which may be on the item
           const variantKey = (item as { variantKey?: string | null }).variantKey;
           
+          // Skip items without productId (new hierarchy items use flavorId/sizeKey)
+          if (!item.productId) {
+            // TODO: Handle new hierarchy inventory decrement via ProductSize
+            continue;
+          }
+          
           if (variantKey) {
             // Decrement from specific variant
             const variant = await tx.productVariant.findUnique({
