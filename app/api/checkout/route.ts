@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
 import Stripe from 'stripe';
-import { Product } from '@/lib/types';
+// Product type from lib/types not needed - using local CheckoutProduct type
 import { sendOrderConfirmationEmail } from '@/lib/server/mail';
 import { getProductDetailsByName } from '@/lib/product-details';
 
@@ -59,8 +59,15 @@ export async function POST(request: Request) {
 
         // 1. Validate items and calculate total
         // Products must exist in the database to process an order
-        type ProductWithVariants = Product & { variants?: Array<{ sizeKey: string; quantity: number; sizeLabel: string }> };
-        let dbProducts: ProductWithVariants[] = [];
+        // Local type for checkout query - includes only the variant fields we need
+        type CheckoutProduct = {
+            id: string;
+            name: string;
+            priceInCents: number;
+            isAvailable: boolean;
+            variants?: Array<{ sizeKey: string; quantity: number; sizeLabel: string }>;
+        };
+        let dbProducts: CheckoutProduct[] = [];
         const productIds = items
             .map((item: unknown) => {
                 if (typeof item !== 'object' || item === null) return null;
