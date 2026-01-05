@@ -59,15 +59,11 @@ export async function POST(request: Request) {
 
         // 1. Validate items and calculate total
         // Products must exist in the database to process an order
-        // Local type for checkout query - includes only the variant fields we need
-        type CheckoutProduct = {
-            id: string;
-            name: string;
-            priceInCents: number;
-            isAvailable: boolean;
-            variants?: Array<{ sizeKey: string; quantity: number; sizeLabel: string }>;
-        };
-        let dbProducts: CheckoutProduct[] = [];
+        // Use Prisma's inferred type for the product query result
+        let dbProducts: Awaited<ReturnType<typeof prisma.product.findMany<{
+            where: { id: { in: string[] }; isAvailable: boolean };
+            include: { variants: { where: { isActive: boolean }; select: { sizeKey: true; quantity: true; sizeLabel: true } } };
+        }>>> = [];
         const productIds = items
             .map((item: unknown) => {
                 if (typeof item !== 'object' || item === null) return null;
