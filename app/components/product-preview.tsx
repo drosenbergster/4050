@@ -2,43 +2,65 @@
 
 import { useEffect, useState } from 'react';
 import HomemadeCard from './homemade-card';
-import { Product } from '@/lib/types';
-import { STATIC_PRODUCTS } from '@/lib/static-data';
-
-// Mock data fallback with Unsplash images - centralized in static-data.ts
-const mockProducts = STATIC_PRODUCTS;
+import { ShopProduct } from '@/app/shop/page';
 
 export default function ProductPreview() {
-  const [products, setProducts] = useState<(Product & { category: string })[]>([]);
+  const [products, setProducts] = useState<ShopProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch('/api/products');
+        // Use the new catalog API which returns ShopProduct-compatible data
+        const res = await fetch('/api/catalog');
         if (res.ok) {
           const data = await res.json();
-          // Add category based on product name
-          const productsWithCategories = data.map((p: Product) => {
-            let category = 'Other';
-            const nameLower = p.name.toLowerCase();
-            if (nameLower.includes('applesauce')) category = 'Applesauces';
-            else if (nameLower.includes('butter')) category = 'Spreads';
-            else if (nameLower.includes('rings') || nameLower.includes('chips')) category = 'Dried Goods';
-            else if (nameLower.includes('jam')) category = 'Jams';
-            else if (nameLower.includes('pickle')) category = 'Pickled Goods';
-
-            return { ...p, category };
-          });
-          setProducts(productsWithCategories);
+          // Transform catalog data to ShopProduct format
+          const shopProducts: ShopProduct[] = data.categories?.flatMap((category: {
+            id: string;
+            name: string;
+            flavors: Array<{
+              id: string;
+              name: string;
+              description: string | null;
+              imageUrl: string | null;
+              isAvailable: boolean;
+              sizes: Array<{
+                id: string;
+                sizeKey: string;
+                sizeLabel: string;
+                sizeOz: number;
+                unitPrice: number;
+                quantity: number;
+              }>;
+            }>;
+          }) =>
+            category.flavors
+              .filter(f => f.isAvailable && f.sizes.some(s => s.quantity > 0))
+              .map(flavor => {
+                const prices = flavor.sizes.map(s => s.unitPrice);
+                return {
+                  id: flavor.id,
+                  name: flavor.name,
+                  fullName: flavor.name,
+                  description: flavor.description || '',
+                  imageUrl: flavor.imageUrl || '',
+                  categoryId: category.id,
+                  categoryName: category.name,
+                  isAvailable: flavor.isAvailable,
+                  sizes: flavor.sizes,
+                  minPrice: Math.min(...prices),
+                  maxPrice: Math.max(...prices),
+                };
+              })
+          ) || [];
+          setProducts(shopProducts.slice(0, 10)); // Limit to 10 for preview
         } else {
-          // Fallback to mock data
-          setProducts(mockProducts);
+          setProducts([]);
         }
       } catch (error) {
         console.error('Failed to fetch products:', error);
-        // Fallback to mock data
-        setProducts(mockProducts);
+        setProducts([]);
       } finally {
         setLoading(false);
       }
@@ -50,6 +72,14 @@ export default function ProductPreview() {
     return (
       <div className="text-center py-12">
         <div className="animate-pulse text-[#636E72]">Loading products...</div>
+      </div>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-[#636E72]">No products available yet</div>
       </div>
     );
   }
