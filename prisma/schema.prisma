@@ -19,22 +19,137 @@ model User {
   @@map("users")
 }
 
+// =====================================
+// PRODUCT HIERARCHY
+// Category → Flavor → Size → Batch
+// =====================================
+
+// Base product category (e.g., Apple Butter, Applesauce, Jams, Pickles)
+model ProductCategory {
+  id          String          @id @default(uuid())
+  name        String          @unique  // "Apple Butter", "Applesauce", "Jams", "Pickles"
+  description String?                  // General description for the category
+  imageUrl    String?                  // Default image for category
+  sortOrder   Int             @default(0)
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  flavors     ProductFlavor[]
+
+  @@map("product_categories")
+}
+
+// Flavor/variant of a base product (e.g., Caramel Thyme, Maple Cinnamon, Classic)
+model ProductFlavor {
+  id           String           @id @default(uuid())
+  categoryId   String
+  name         String           // "Caramel Thyme", "Classic", "Maple Cinnamon"
+  description  String?          // Specific description for this flavor
+  imageUrl     String?          // Override image for this flavor
+  isAvailable  Boolean          @default(true)  // Admin visibility toggle
+  sortOrder    Int              @default(0)
+  cogsRecipeId String?          @unique
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  category     ProductCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  cogsRecipe   CogsRecipe?      @relation(fields: [cogsRecipeId], references: [id])
+  sizes        ProductSize[]
+  batches      ProductBatch[]
+  orderItems   OrderItem[]
+
+  @@unique([categoryId, name])  // No duplicate flavors within a category
+  @@index([categoryId])
+  @@index([isAvailable])
+  @@map("product_flavors")
+}
+
+// Size options for a flavor (e.g., 8oz, 16oz, 32oz)
+model ProductSize {
+  id        String         @id @default(uuid())
+  flavorId  String
+  sizeKey   String         // "small-8oz", "regular-16oz", "quart-32oz"
+  sizeLabel String         // "Small Jar (8 oz)", "Regular Jar (16 oz)"
+  sizeOz    Int            // 8, 16, 32 - for sorting
+  unitPrice Int            // Price in cents
+  quantity  Int            @default(0)  // Current stock count
+  isActive  Boolean        @default(true)
+  sortOrder Int            @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  flavor    ProductFlavor  @relation(fields: [flavorId], references: [id], onDelete: Cascade)
+  batches   ProductBatch[]
+
+  @@unique([flavorId, sizeKey])  // One size option per flavor
+  @@index([flavorId])
+  @@index([quantity])
+  @@index([sizeOz])
+  @@map("product_sizes")
+}
+
+// Production batch tracking
+model ProductBatch {
+  id          String        @id @default(uuid())
+  flavorId    String
+  sizeId      String?       // Optional: link to specific size if batch is size-specific
+  batchDate   DateTime      @default(now())  // When this batch was made
+  quantity    Int           // Number of units produced
+  notes       String?       // Optional notes about this batch
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  flavor      ProductFlavor @relation(fields: [flavorId], references: [id], onDelete: Cascade)
+  size        ProductSize?  @relation(fields: [sizeId], references: [id])
+
+  @@index([batchDate])
+  @@index([flavorId])
+  @@map("product_batches")
+}
+
+// =====================================
+// LEGACY: Keeping for migration (can remove after full migration)
+// =====================================
+
 model Product {
-  id           String      @id(map: "Product_pkey") @default(uuid())
+  id           String           @id(map: "Product_pkey") @default(uuid())
   name         String
   description  String
-  price        Int         @default(0)
-  imageUrl     String      @default("")
-  isAvailable  Boolean     @default(true)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  price        Int              @default(0)
+  imageUrl     String           @default("")
+  isAvailable  Boolean          @default(true)
+  quantity     Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
   category     String?
-  cogsRecipeId String?     @unique
-  orderItems   OrderItem[]
-  cogsRecipe   CogsRecipe? @relation(fields: [cogsRecipeId], references: [id])
+  cogsRecipeId String?          @unique
+  orderItems   OrderItem[]      @relation("LegacyOrderItems")
+  variants     ProductVariant[]
+  cogsRecipe   CogsRecipe?      @relation("LegacyCogsRecipe", fields: [cogsRecipeId], references: [id])
 
   @@index([category])
+  @@index([quantity])
   @@map("products")
+}
+
+// Legacy variant model (keeping for migration)
+model ProductVariant {
+  id         String   @id @default(uuid())
+  productId  String
+  sku        String?
+  sizeKey    String
+  sizeLabel  String
+  sizeOz     Int
+  unitPrice  Int
+  quantity   Int      @default(0)
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, sizeKey])
+  @@index([productId])
+  @@index([quantity])
+  @@index([sizeOz])
+  @@map("product_variants")
 }
 
 model Order {
@@ -61,16 +176,25 @@ model Order {
 }
 
 model OrderItem {
-  id          String  @id @default(uuid())
+  id          String         @id @default(uuid())
   orderId     String
-  productId   String
-  productName String
+  // New hierarchy references
+  flavorId    String?        // Reference to ProductFlavor
+  sizeKey     String?        // Size key for the ordered item
+  // Legacy fields (kept for migration and backwards compatibility)
+  productId   String?        // Legacy: reference to old Product model
+  productName String         // Snapshot of full product name at time of order
+  variantKey  String?        // Legacy: Size variant key
+  // Order details
   quantity    Int
   unitPrice   Int
   lineTotal   Int
-  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "OrderItem_orderId_fkey")
-  product     Product @relation(fields: [productId], references: [id], map: "OrderItem_productId_fkey")
+  // Relations
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "OrderItem_orderId_fkey")
+  flavor      ProductFlavor? @relation(fields: [flavorId], references: [id])
+  product     Product?       @relation("LegacyOrderItems", fields: [productId], references: [id], map: "OrderItem_productId_fkey")
 
+  @@index([flavorId])
   @@map("order_items")
 }
 
@@ -112,7 +236,10 @@ model CogsRecipe {
   status        RecipeStatus           @default(IDEA)
   batchYield    Int?                   // Number of jars this batch makes (null = per-jar mode)
   ingredients   CogsRecipeIngredient[]
-  product       Product?
+  // New hierarchy relation
+  flavor        ProductFlavor?
+  // Legacy relation (kept for migration)
+  product       Product?               @relation("LegacyCogsRecipe")
 
   @@index([status])
   @@map("cogs_recipes")

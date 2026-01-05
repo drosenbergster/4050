@@ -14,6 +14,7 @@ async function isDevAuthorized(): Promise<boolean> {
 }
 
 // POST - Create a product from a COGS recipe
+// Now creates ProductFlavor in the new hierarchy instead of legacy Product
 export async function POST(request: NextRequest) {
   try {
     const devAuth = await isDevAuthorized();
@@ -23,31 +24,40 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json();
-    const { recipeId, name, description, price, imageUrl, category, isAvailable } = data;
+    const { recipeId, name, description, price, imageUrl, categoryId, isAvailable } = data;
 
     // Validate required fields
-    if (!recipeId || !name || !description || !imageUrl) {
+    if (!recipeId || !name || !description || !imageUrl || !categoryId) {
       return NextResponse.json({ 
-        error: 'Missing required fields: recipeId, name, description, imageUrl' 
+        error: 'Missing required fields: recipeId, name, description, imageUrl, categoryId' 
       }, { status: 400 });
     }
 
     // Check if recipe exists
     const recipe = await prisma.cogsRecipe.findUnique({
       where: { id: recipeId },
-      include: { product: true }
+      include: { flavor: true }
     });
 
     if (!recipe) {
       return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
     }
 
-    // Check if recipe is already linked to a product
-    if (recipe.product) {
+    // Check if recipe is already linked to a flavor
+    if (recipe.flavor) {
       return NextResponse.json({ 
         error: 'This recipe is already published as a product',
-        existingProduct: recipe.product
+        existingFlavor: recipe.flavor
       }, { status: 400 });
+    }
+
+    // Check if category exists
+    const category = await prisma.productCategory.findUnique({
+      where: { id: categoryId }
+    });
+
+    if (!category) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
 
     // Convert price to cents (if provided in dollars)
@@ -55,29 +65,63 @@ export async function POST(request: NextRequest) {
       ? Math.round(price * 100) 
       : Math.round(recipe.retailPrice * 100);
 
-    // Create the product linked to the recipe and update recipe status to PUBLISHED
-    const [product] = await prisma.$transaction([
-      prisma.product.create({
+    // Determine default size based on container type
+    const containerType = recipe.containerType?.toLowerCase() || 'jar';
+    const defaultSizeOz = containerType.includes('quart') ? 32 
+      : containerType.includes('pint') ? 16 
+      : containerType.includes('8oz') ? 8 
+      : containerType.includes('4oz') ? 4 
+      : containerType.includes('bag') ? 4 
+      : 8; // Default to 8oz
+
+    const containerLabel = containerType.includes('bag') ? 'bag' : 'jar';
+
+    // Create the flavor linked to the recipe and update recipe status to PUBLISHED
+    const flavor = await prisma.$transaction(async (tx) => {
+      // Create ProductFlavor
+      const newFlavor = await tx.productFlavor.create({
         data: {
+          categoryId,
           name,
           description,
-          price: priceInCents,
           imageUrl,
-          category: category || null,
           isAvailable: isAvailable !== undefined ? isAvailable : true,
+          basePrice: priceInCents,
           cogsRecipeId: recipeId,
         },
-        include: {
-          cogsRecipe: true,
-        }
-      }),
-      prisma.cogsRecipe.update({
+      });
+
+      // Create default size
+      await tx.productSize.create({
+        data: {
+          flavorId: newFlavor.id,
+          sizeKey: `${defaultSizeOz}oz`,
+          sizeLabel: `${defaultSizeOz} oz ${containerLabel}`,
+          sizeOz: defaultSizeOz,
+          unitPrice: priceInCents,
+          quantity: 0, // Start with 0 inventory
+          isActive: true,
+          sortOrder: defaultSizeOz,
+        },
+      });
+
+      // Update recipe status
+      await tx.cogsRecipe.update({
         where: { id: recipeId },
         data: { status: 'PUBLISHED' }
-      })
-    ]);
+      });
 
-    return NextResponse.json(product, { status: 201 });
+      // Return the flavor with its size
+      return tx.productFlavor.findUnique({
+        where: { id: newFlavor.id },
+        include: {
+          category: true,
+          sizes: true,
+        }
+      });
+    });
+
+    return NextResponse.json(flavor, { status: 201 });
   } catch (error) {
     console.error('Error creating product from recipe:', error);
     return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });

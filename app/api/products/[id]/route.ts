@@ -19,7 +19,7 @@ export async function PUT(
     try {
         const { id } = await params;
         const body = await request.json();
-        const { name, description, price, imageUrl, isAvailable, category } = body;
+        const { name, description, price, imageUrl, isAvailable, category, quantity } = body;
 
         // Build update data - only include fields that were provided
         const updateData: Record<string, unknown> = {};
@@ -29,6 +29,7 @@ export async function PUT(
         if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
         if (isAvailable !== undefined) updateData.isAvailable = isAvailable;
         if (category !== undefined) updateData.category = category || null;
+        if (quantity !== undefined) updateData.quantity = Math.max(0, quantity); // Prevent negative
 
         const product = await prisma.product.update({
             where: { id },

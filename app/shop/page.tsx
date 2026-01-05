@@ -1,25 +1,88 @@
 import { prisma } from '@/lib/server/db';
-import { Product } from '@/lib/types';
 import ProductGridWithFilters from '@/app/components/product-grid-with-filters';
-import { STATIC_PRODUCTS } from '@/lib/static-data';
 
-async function getProducts(): Promise<(Product & { category: string })[]> {
+// Shop product type - includes category name and computed fields
+export interface ShopProduct {
+  id: string;
+  name: string;
+  fullName: string;
+  description: string;
+  imageUrl: string;
+  categoryId: string;
+  categoryName: string;
+  isAvailable: boolean;
+  sizes: {
+    id: string;
+    sizeKey: string;
+    sizeLabel: string;
+    sizeOz: number;
+    unitPrice: number;
+    quantity: number;
+  }[];
+  totalQuantity: number;
+  minPrice: number;
+  maxPrice: number;
+}
+
+async function getProducts(): Promise<ShopProduct[]> {
   try {
-    const dbProducts = await prisma.product.findMany({
-      where: { isAvailable: true },
-      orderBy: { name: 'asc' },
+    // Fetch flavors with in-stock sizes from the new hierarchy
+    const flavors = await prisma.productFlavor.findMany({
+      where: {
+        isAvailable: true,
+        sizes: {
+          some: {
+            isActive: true,
+            quantity: { gt: 0 },
+          },
+        },
+      },
+      include: {
+        category: true,
+        sizes: {
+          where: {
+            isActive: true,
+            quantity: { gt: 0 },
+          },
+          orderBy: { sizeOz: 'asc' },
+        },
+      },
+      orderBy: [
+        { category: { sortOrder: 'asc' } },
+        { sortOrder: 'asc' },
+        { name: 'asc' },
+      ],
     });
 
-    // Use category from database, fallback to 'Other' if not set
-    return dbProducts.map((p: Product & { category?: string | null }) => ({
-      ...p,
-      category: p.category || 'Other',
-      createdAt: new Date(p.createdAt),
-      updatedAt: new Date(p.updatedAt),
-    }));
+    return flavors.map((flavor) => {
+      const prices = flavor.sizes.map((s) => s.unitPrice);
+      const totalQuantity = flavor.sizes.reduce((sum, s) => sum + s.quantity, 0);
+
+      return {
+        id: flavor.id,
+        name: flavor.name,
+        fullName: flavor.name,
+        description: flavor.description || '',
+        imageUrl: flavor.imageUrl || flavor.category.imageUrl || '',
+        categoryId: flavor.categoryId,
+        categoryName: flavor.category.name,
+        isAvailable: flavor.isAvailable,
+        sizes: flavor.sizes.map((s) => ({
+          id: s.id,
+          sizeKey: s.sizeKey,
+          sizeLabel: s.sizeLabel,
+          sizeOz: s.sizeOz,
+          unitPrice: s.unitPrice,
+          quantity: s.quantity,
+        })),
+        totalQuantity,
+        minPrice: prices.length > 0 ? Math.min(...prices) : 0,
+        maxPrice: prices.length > 0 ? Math.max(...prices) : 0,
+      };
+    });
   } catch (error) {
-    console.error('Database connection failed, using static data:', error);
-    return STATIC_PRODUCTS;
+    console.error('Database connection failed:', error);
+    return [];
   }
 }
 

@@ -8,6 +8,7 @@ export const STATIC_PRODUCTS: (Product & { category: string })[] = [
         price: 899, 
         imageUrl: 'https://images.unsplash.com/photo-1590005354167-6da97870c91d?q=80&w=800&auto=format&fit=crop', 
         isAvailable: true, 
+        quantity: 10,
         createdAt: new Date(), 
         updatedAt: new Date(), 
         category: 'Applesauces' 
@@ -19,6 +20,7 @@ export const STATIC_PRODUCTS: (Product & { category: string })[] = [
         price: 899, 
         imageUrl: 'https://images.unsplash.com/photo-1590005354167-6da97870c91d?q=80&w=800&auto=format&fit=crop', 
         isAvailable: true, 
+        quantity: 10,
         createdAt: new Date(), 
         updatedAt: new Date(), 
         category: 'Applesauces' 
@@ -30,6 +32,7 @@ export const STATIC_PRODUCTS: (Product & { category: string })[] = [
         price: 799, 
         imageUrl: 'https://images.unsplash.com/photo-1591871937573-74dbba515c4c?q=80&w=800&auto=format&fit=crop', 
         isAvailable: true, 
+        quantity: 10,
         createdAt: new Date(), 
         updatedAt: new Date(), 
         category: 'Dried Goods' 
@@ -41,6 +44,7 @@ export const STATIC_PRODUCTS: (Product & { category: string })[] = [
         price: 1099, 
         imageUrl: 'https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?q=80&w=800&auto=format&fit=crop', 
         isAvailable: true, 
+        quantity: 10,
         createdAt: new Date(), 
         updatedAt: new Date(), 
         category: 'Spreads' 
@@ -52,6 +56,7 @@ export const STATIC_PRODUCTS: (Product & { category: string })[] = [
         price: 699, 
         imageUrl: 'https://images.unsplash.com/photo-1591871937573-74dbba515c4c?q=80&w=800&auto=format&fit=crop', 
         isAvailable: true, 
+        quantity: 10,
         createdAt: new Date(), 
         updatedAt: new Date(), 
         category: 'Dried Goods' 
@@ -63,6 +68,7 @@ export const STATIC_PRODUCTS: (Product & { category: string })[] = [
         price: 1199, 
         imageUrl: 'https://images.unsplash.com/photo-1502741126161-b048400d085d?q=80&w=800&auto=format&fit=crop', 
         isAvailable: true, 
+        quantity: 10,
         createdAt: new Date(), 
         updatedAt: new Date(), 
         category: 'Jams' 
@@ -74,6 +80,7 @@ export const STATIC_PRODUCTS: (Product & { category: string })[] = [
         price: 1199, 
         imageUrl: 'https://images.unsplash.com/photo-1464965211914-c7145edb918c?q=80&w=800&auto=format&fit=crop', 
         isAvailable: true, 
+        quantity: 10,
         createdAt: new Date(), 
         updatedAt: new Date(), 
         category: 'Jams' 
@@ -85,6 +92,7 @@ export const STATIC_PRODUCTS: (Product & { category: string })[] = [
         price: 1099, 
         imageUrl: 'https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?q=80&w=800&auto=format&fit=crop', 
         isAvailable: true, 
+        quantity: 10,
         createdAt: new Date(), 
         updatedAt: new Date(), 
         category: 'Jams' 
@@ -96,6 +104,7 @@ export const STATIC_PRODUCTS: (Product & { category: string })[] = [
         price: 999, 
         imageUrl: 'https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?q=80&w=800&auto=format&fit=crop', 
         isAvailable: true, 
+        quantity: 10,
         createdAt: new Date(), 
         updatedAt: new Date(), 
         category: 'Pickled Goods' 
@@ -107,6 +116,7 @@ export const STATIC_PRODUCTS: (Product & { category: string })[] = [
         price: 999, 
         imageUrl: 'https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?q=80&w=800&auto=format&fit=crop', 
         isAvailable: true, 
+        quantity: 10,
         createdAt: new Date(), 
         updatedAt: new Date(), 
         category: 'Pickled Goods' 

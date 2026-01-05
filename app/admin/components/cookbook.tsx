@@ -75,6 +75,25 @@ interface Recipe {
     isAvailable: boolean;
     price: number;
   } | null;
+  // New hierarchy - linked ProductFlavor
+  flavor?: {
+    id: string;
+    name: string;
+    description: string | null;
+    imageUrl: string;
+    isAvailable: boolean;
+    categoryId: string;
+    category: {
+      id: string;
+      name: string;
+    };
+    sizes: {
+      id: string;
+      sizeLabel: string;
+      unitPrice: number;
+      quantity: number;
+    }[];
+  } | null;
 }
 
 type CookbookTab = 'ideas' | 'ready' | 'published';
@@ -902,36 +921,44 @@ export default function Cookbook() {
                         </>
                       )}
                       
-                      {activeTab === 'published' && recipe.product && (
+                      {activeTab === 'published' && (recipe.flavor || recipe.product) && (
                         <div className="space-y-4">
                           {/* Product Controls Row */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              {/* In Stock Toggle */}
+                              {/* In Stock Toggle - uses flavor API if available, falls back to product */}
                               <button
                                 onClick={async () => {
                                   try {
-                                    await fetch(`/api/products/${recipe.product!.id}`, {
-                                      method: 'PUT',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ isAvailable: !recipe.product!.isAvailable })
-                                    });
+                                    if (recipe.flavor) {
+                                      await fetch(`/api/catalog/flavors/${recipe.flavor.id}`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ isAvailable: !recipe.flavor.isAvailable })
+                                      });
+                                    } else if (recipe.product) {
+                                      await fetch(`/api/products/${recipe.product.id}`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ isAvailable: !recipe.product.isAvailable })
+                                      });
+                                    }
                                     await fetchData();
                                   } catch (e) {
                                     console.error('Failed to toggle availability:', e);
                                   }
                                 }}
                                 className={`px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 font-medium ${
-                                  recipe.product.isAvailable 
+                                  (recipe.flavor?.isAvailable ?? recipe.product?.isAvailable)
                                     ? 'text-green-700 bg-green-50 hover:bg-green-100 border border-green-200' 
                                     : 'text-gray-500 bg-gray-100 hover:bg-gray-200 border border-gray-200'
                                 }`}
                               >
-                                {recipe.product.isAvailable ? <PackageCheck size={16} /> : <PackageX size={16} />}
-                                {recipe.product.isAvailable ? 'In Stock' : 'Out of Stock'}
+                                {(recipe.flavor?.isAvailable ?? recipe.product?.isAvailable) ? <PackageCheck size={16} /> : <PackageX size={16} />}
+                                {(recipe.flavor?.isAvailable ?? recipe.product?.isAvailable) ? 'In Stock' : 'Out of Stock'}
                               </button>
                               <a
-                                href="/shop"
+                                href={recipe.flavor ? `/product/${recipe.flavor.id}` : "/shop"}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-3 py-2 text-sm text-[#5C4A3D] hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1"
@@ -957,14 +984,14 @@ export default function Cookbook() {
                             </div>
                           </div>
                           
-                          {/* Product Details Section */}
+                          {/* Product Details Section - prioritizes flavor over legacy product */}
                           <div className="border-t border-[#E5DDD3] pt-4">
                             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
                               <ShoppingBag size={14} />
-                              Product Details
+                              Shop Product {recipe.flavor && <span className="text-[#4A7C59] font-normal normal-case">(synced)</span>}
                             </h4>
                             
-                            {editingProductId === recipe.product.id ? (
+                            {editingProductId === (recipe.flavor?.id || recipe.product?.id) ? (
                               /* Edit Mode */
                               <div className="space-y-4 bg-white rounded-lg p-4 border border-[#E5DDD3]">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1079,11 +1106,24 @@ export default function Cookbook() {
                                   <button
                                     onClick={async () => {
                                       try {
-                                        await fetch(`/api/products/${recipe.product!.id}`, {
-                                          method: 'PUT',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify(productEdits)
-                                        });
+                                        // Use flavor API if available, otherwise fall back to product
+                                        if (recipe.flavor) {
+                                          await fetch(`/api/catalog/flavors/${recipe.flavor.id}`, {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                              name: productEdits.name,
+                                              description: productEdits.description,
+                                              imageUrl: productEdits.imageUrl
+                                            })
+                                          });
+                                        } else if (recipe.product) {
+                                          await fetch(`/api/products/${recipe.product.id}`, {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify(productEdits)
+                                          });
+                                        }
                                         await fetchData();
                                         setEditingProductId(null);
                                       } catch (e) {
@@ -1098,27 +1138,29 @@ export default function Cookbook() {
                                 </div>
                               </div>
                             ) : (
-                              /* View Mode */
+                              /* View Mode - prioritize flavor over legacy product */
                               <div className="bg-white rounded-lg p-4 border border-[#E5DDD3]">
                                 <div className="flex gap-4">
                                   {/* Product Image - Clickable to edit */}
                                   <div className="flex-shrink-0">
                                     <button
                                       onClick={() => {
-                                        setEditingProductId(recipe.product!.id);
-                                        setProductEdits({
-                                          name: recipe.product!.name,
-                                          description: recipe.product!.description || '',
-                                          imageUrl: recipe.product!.imageUrl,
-                                          category: recipe.product!.category || ''
-                                        });
+                                        const id = recipe.flavor?.id || recipe.product?.id;
+                                        const name = recipe.flavor?.name || recipe.product?.name || '';
+                                        const desc = recipe.flavor?.description || recipe.product?.description || '';
+                                        const img = recipe.flavor?.imageUrl || recipe.product?.imageUrl || '';
+                                        const cat = recipe.flavor?.category?.name || recipe.product?.category || '';
+                                        if (id) {
+                                          setEditingProductId(id);
+                                          setProductEdits({ name, description: desc, imageUrl: img, category: cat });
+                                        }
                                       }}
                                       className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 relative group cursor-pointer border-2 border-transparent hover:border-[#4A7C59] transition-all"
                                       title="Click to change photo"
                                     >
                                       <img 
-                                        src={recipe.product.imageUrl} 
-                                        alt={recipe.product.name}
+                                        src={recipe.flavor?.imageUrl || recipe.product?.imageUrl || ''} 
+                                        alt={recipe.flavor?.name || recipe.product?.name || ''}
                                         className="w-full h-full object-cover"
                                       />
                                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -1131,23 +1173,41 @@ export default function Cookbook() {
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between">
                                       <div>
-                                        <h5 className="font-medium text-[#5C4A3D]">{recipe.product.name}</h5>
-                                        {recipe.product.category && (
+                                        <h5 className="font-medium text-[#5C4A3D]">
+                                          {recipe.flavor?.name || recipe.product?.name}
+                                        </h5>
+                                        {(recipe.flavor?.category?.name || recipe.product?.category) && (
                                           <span className="inline-flex items-center gap-1 text-xs text-gray-500 mt-1">
                                             <Tag size={10} />
-                                            {recipe.product.category}
+                                            {recipe.flavor?.category?.name || recipe.product?.category}
                                           </span>
+                                        )}
+                                        {/* Show size/inventory info for flavors */}
+                                        {recipe.flavor?.sizes && recipe.flavor.sizes.length > 0 && (
+                                          <div className="flex items-center gap-2 mt-2">
+                                            {recipe.flavor.sizes.map((size) => (
+                                              <span key={size.id} className={`text-xs px-2 py-0.5 rounded ${
+                                                size.quantity > 0 
+                                                  ? 'bg-green-50 text-green-700 border border-green-200' 
+                                                  : 'bg-gray-100 text-gray-500'
+                                              }`}>
+                                                {size.sizeLabel}: {size.quantity}
+                                              </span>
+                                            ))}
+                                          </div>
                                         )}
                                       </div>
                                       <button
                                         onClick={() => {
-                                          setEditingProductId(recipe.product!.id);
-                                          setProductEdits({
-                                            name: recipe.product!.name,
-                                            description: recipe.product!.description || '',
-                                            imageUrl: recipe.product!.imageUrl,
-                                            category: recipe.product!.category || ''
-                                          });
+                                          const id = recipe.flavor?.id || recipe.product?.id;
+                                          const name = recipe.flavor?.name || recipe.product?.name || '';
+                                          const desc = recipe.flavor?.description || recipe.product?.description || '';
+                                          const img = recipe.flavor?.imageUrl || recipe.product?.imageUrl || '';
+                                          const cat = recipe.flavor?.category?.name || recipe.product?.category || '';
+                                          if (id) {
+                                            setEditingProductId(id);
+                                            setProductEdits({ name, description: desc, imageUrl: img, category: cat });
+                                          }
                                         }}
                                         className="text-sm text-[#4A7C59] hover:text-[#3d6549] flex items-center gap-1"
                                       >
@@ -1156,7 +1216,7 @@ export default function Cookbook() {
                                       </button>
                                     </div>
                                     <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                                      {recipe.product.description}
+                                      {recipe.flavor?.description || recipe.product?.description}
                                     </p>
                                   </div>
                                 </div>
@@ -1818,10 +1878,60 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
   const [description, setDescription] = useState(recipe.description || `Handcrafted ${recipe.name} made with care.`);
   const [price, setPrice] = useState(recipe.retailPrice);
   const [imageUrl, setImageUrl] = useState('');
-  const [category, setCategory] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
+
+  // Fetch categories from API
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/catalog/categories');
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // Create new category
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    setCreatingCategory(true);
+    try {
+      const res = await fetch('/api/catalog/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      });
+      if (res.ok) {
+        const newCategory = await res.json();
+        setCategories(prev => [...prev, newCategory]);
+        setCategoryId(newCategory.id);
+        setNewCategoryName('');
+        setShowNewCategoryInput(false);
+      } else {
+        throw new Error('Failed to create category');
+      }
+    } catch (err) {
+      setError('Failed to create category');
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
 
   const costs = calculateRecipeCosts(recipe);
   const estimatedProfit = costs.totalCost !== null ? price - costs.totalCost : null;
@@ -1829,6 +1939,10 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!categoryId) {
+      setError('Please select a category');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
 
@@ -1842,7 +1956,7 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
           description,
           price, // Will be converted to cents by API
           imageUrl,
-          category: category || null,
+          categoryId, // Use categoryId for new hierarchy
           isAvailable,
         }),
       });
@@ -1859,8 +1973,6 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
       setIsSubmitting(false);
     }
   };
-
-  const categories = ['Applesauces', 'Spreads', 'Dried Goods', 'Jams', 'Pickled Goods', 'Other'];
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1982,17 +2094,77 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/20 focus:border-[#4A7C59]"
-            >
-              <option value="">Select a category...</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category <span className="text-red-500">*</span>
+            </label>
+            {showNewCategoryInput ? (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Enter category name..."
+                    className="flex-1 px-3 py-2 border border-[#E5DDD3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/20 focus:border-[#4A7C59]"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleCreateCategory();
+                      }
+                      if (e.key === 'Escape') {
+                        setShowNewCategoryInput(false);
+                        setNewCategoryName('');
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateCategory}
+                    disabled={creatingCategory || !newCategoryName.trim()}
+                    className="px-3 py-2 bg-[#4A7C59] text-white rounded-lg hover:bg-[#3d6549] transition-colors disabled:opacity-50"
+                  >
+                    {creatingCategory ? '...' : 'Add'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNewCategoryInput(false);
+                      setNewCategoryName('');
+                    }}
+                    className="px-3 py-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <select
+                  value={categoryId}
+                  onChange={(e) => {
+                    if (e.target.value === '__new__') {
+                      setShowNewCategoryInput(true);
+                    } else {
+                      setCategoryId(e.target.value);
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/20 focus:border-[#4A7C59]"
+                >
+                  <option value="">Select a category...</option>
+                  {loadingCategories ? (
+                    <option disabled>Loading...</option>
+                  ) : (
+                    <>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                      <option value="__new__">+ Add New Category...</option>
+                    </>
+                  )}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Visibility Toggle */}
@@ -2026,7 +2198,7 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !name.trim() || !imageUrl.trim()}
+              disabled={isSubmitting || !name.trim() || !imageUrl.trim() || !categoryId}
               className="px-6 py-2 bg-[#4A7C59] text-white rounded-lg hover:bg-[#3d6549] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSubmitting ? (

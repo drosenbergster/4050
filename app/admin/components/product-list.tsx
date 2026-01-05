@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Product } from '@/lib/types';
+import React, { useState, useEffect } from 'react';
+import { Product, ProductVariant } from '@/lib/types';
 import { formatPrice } from '@/lib/format';
-import { Pencil, Trash2, Plus, Loader2, Settings, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, Plus, Loader2, Settings, X, ChevronDown, ChevronRight, Package } from 'lucide-react';
 import ProductFormModal from './product-form-modal';
 import DeleteConfirmModal from './delete-confirm-modal';
+
+type ProductWithVariants = Product & { variants?: ProductVariant[] };
 
 const DEFAULT_CATEGORIES = [
     'Applesauces',
@@ -16,7 +18,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export default function ProductList() {
-    const [products, setProducts] = useState<Product[]>([]);
+    const [products, setProducts] = useState<ProductWithVariants[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -31,8 +33,17 @@ export default function ProductList() {
     // Inline editing states
     const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
     const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
+    const [editingQuantityId, setEditingQuantityId] = useState<string | null>(null);
     const [tempDescription, setTempDescription] = useState('');
     const [tempPrice, setTempPrice] = useState('');
+    const [tempQuantity, setTempQuantity] = useState('');
+    const [quantityMode, setQuantityMode] = useState<'set' | 'add'>('set');
+    
+    // Variant editing states
+    const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+    const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
+    const [tempVariantQuantity, setTempVariantQuantity] = useState('');
+    const [variantQuantityMode, setVariantQuantityMode] = useState<'set' | 'add'>('add');
     
     // Category manager modal
     const [showCategoryManager, setShowCategoryManager] = useState(false);
@@ -50,7 +61,7 @@ export default function ProductList() {
     const fetchProducts = async () => {
         try {
             setLoading(true);
-            const res = await fetch('/api/products');
+            const res = await fetch('/api/products?includeVariants=true');
             if (!res.ok) throw new Error('Failed to fetch products');
             const data = await res.json();
             setProducts(data);
@@ -203,6 +214,162 @@ export default function ProductList() {
         }
     };
 
+    // Inline quantity edit
+    const [savingQuantity, setSavingQuantity] = useState(false);
+    
+    const startEditingQuantity = (product: Product, mode: 'set' | 'add' = 'set') => {
+        setEditingQuantityId(product.id);
+        setQuantityMode(mode);
+        setTempQuantity(mode === 'set' ? String(product.quantity) : '');
+    };
+
+    const saveQuantity = async (product: Product) => {
+        if (savingQuantity) return; // Prevent double-save
+        
+        const value = parseInt(tempQuantity, 10);
+        if (isNaN(value)) {
+            showSuccess('Invalid quantity');
+            setEditingQuantityId(null);
+            return;
+        }
+
+        setSavingQuantity(true);
+        try {
+            if (quantityMode === 'add') {
+                // Use inventory adjustment endpoint
+                const res = await fetch(`/api/products/${product.id}/inventory`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adjustment: value }),
+                });
+                if (!res.ok) throw new Error('Failed to update');
+                const data = await res.json();
+                
+                setProducts(prev => prev.map(p => 
+                    p.id === product.id ? { ...p, quantity: data.quantity } : p
+                ));
+                showSuccess(`Added ${value} to stock (now ${data.quantity})`);
+            } else {
+                // Direct set
+                const newQuantity = Math.max(0, value);
+                const res = await fetch(`/api/products/${product.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: newQuantity }),
+                });
+                if (!res.ok) throw new Error('Failed to update');
+                
+                setProducts(prev => prev.map(p => 
+                    p.id === product.id ? { ...p, quantity: newQuantity } : p
+                ));
+                showSuccess(`Stock set to ${newQuantity}`);
+            }
+        } catch (err) {
+            console.error('Quantity update failed:', err);
+            showSuccess('Failed to update quantity');
+        } finally {
+            setEditingQuantityId(null);
+            setSavingQuantity(false);
+        }
+    };
+
+    // Get stock status styling
+    const getStockStatus = (quantity: number) => {
+        if (quantity === 0) return { color: 'text-red-600 bg-red-50', label: 'Out of Stock' };
+        if (quantity <= 5) return { color: 'text-amber-600 bg-amber-50', label: 'Low Stock' };
+        return { color: 'text-emerald-600 bg-emerald-50', label: 'In Stock' };
+    };
+
+    // Toggle product variant expansion
+    const toggleProductExpansion = (productId: string) => {
+        setExpandedProducts(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(productId)) {
+                newSet.delete(productId);
+            } else {
+                newSet.add(productId);
+            }
+            return newSet;
+        });
+    };
+
+    // Variant quantity editing
+    const [savingVariantQuantity, setSavingVariantQuantity] = useState(false);
+
+    const startEditingVariantQuantity = (variant: ProductVariant, mode: 'set' | 'add' = 'add') => {
+        setEditingVariantId(variant.id);
+        setVariantQuantityMode(mode);
+        setTempVariantQuantity(mode === 'set' ? String(variant.quantity) : '');
+    };
+
+    const saveVariantQuantity = async (productId: string, variant: ProductVariant) => {
+        if (savingVariantQuantity) return;
+
+        const value = parseInt(tempVariantQuantity, 10);
+        if (isNaN(value)) {
+            showSuccess('Invalid quantity');
+            setEditingVariantId(null);
+            return;
+        }
+
+        setSavingVariantQuantity(true);
+        try {
+            if (variantQuantityMode === 'add') {
+                // Use variant inventory adjustment endpoint
+                const res = await fetch(`/api/products/${productId}/variants/${variant.id}/inventory`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adjustment: value }),
+                });
+                if (!res.ok) throw new Error('Failed to update');
+                const data = await res.json();
+
+                // Update local state
+                setProducts(prev => prev.map(p => {
+                    if (p.id !== productId) return p;
+                    return {
+                        ...p,
+                        quantity: p.variants?.reduce((sum, v) => 
+                            sum + (v.id === variant.id ? data.quantity : v.quantity), 0) ?? p.quantity,
+                        variants: p.variants?.map(v =>
+                            v.id === variant.id ? { ...v, quantity: data.quantity } : v
+                        ),
+                    };
+                }));
+                showSuccess(`Added ${value} to ${variant.sizeLabel} (now ${data.quantity})`);
+            } else {
+                // Direct set via PUT
+                const newQuantity = Math.max(0, value);
+                const res = await fetch(`/api/products/${productId}/variants/${variant.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: newQuantity }),
+                });
+                if (!res.ok) throw new Error('Failed to update');
+
+                // Update local state
+                setProducts(prev => prev.map(p => {
+                    if (p.id !== productId) return p;
+                    const newVariants = p.variants?.map(v =>
+                        v.id === variant.id ? { ...v, quantity: newQuantity } : v
+                    );
+                    return {
+                        ...p,
+                        quantity: newVariants?.reduce((sum, v) => sum + v.quantity, 0) ?? p.quantity,
+                        variants: newVariants,
+                    };
+                }));
+                showSuccess(`${variant.sizeLabel} stock set to ${newQuantity}`);
+            }
+        } catch (err) {
+            console.error('Variant quantity update failed:', err);
+            showSuccess('Failed to update variant quantity');
+        } finally {
+            setEditingVariantId(null);
+            setSavingVariantQuantity(false);
+        }
+    };
+
     const handleFormSuccess = (message: string) => {
         setIsFormOpen(false);
         setEditingProduct(null);
@@ -278,35 +445,53 @@ export default function ProductList() {
                                 <th className="px-3 py-2.5 text-right text-xs font-semibold text-[#8B7355] uppercase tracking-wider w-24">
                                     Price
                                 </th>
+                                <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#8B7355] uppercase tracking-wider w-28">
+                                    Stock
+                                </th>
                                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#8B7355] uppercase tracking-wider w-24">
                                     
                                 </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[#F5F0EB]">
-                            {products.map((product) => (
-                                <tr 
-                                    key={product.id} 
-                                    className={`transition-colors ${
-                                        product.isAvailable 
-                                            ? 'hover:bg-[#FDFCFB]' 
-                                            : 'bg-gray-50/50'
-                                    }`}
-                                >
-                                    <td className="px-3 py-2">
-                                        <div className={`text-sm font-medium ${
-                                            product.isAvailable ? 'text-[#5C4A3D]' : 'text-gray-400'
-                                        }`}>
-                                            {product.name}
-                                        </div>
-                                        <div className="flex items-center gap-1 mt-1">
-                                            <select
-                                                value={product.category || ''}
-                                                onChange={(e) => handleCategoryChange(product, e.target.value)}
-                                                className="flex-1 text-xs border border-[#E5DDD3] rounded px-1.5 py-0.5 bg-white text-[#5C4A3D] focus:outline-none focus:ring-1 focus:ring-[#4A7C59]/30 focus:border-[#4A7C59]"
-                                            >
-                                                <option value="">No category</option>
-                                                {allCategories.map((cat) => (
+                            {products.map((product) => {
+                                const hasVariants = product.variants && product.variants.length > 0;
+                                const isExpanded = expandedProducts.has(product.id);
+                                
+                                return (
+                                    <React.Fragment key={product.id}>
+                                        <tr 
+                                            className={`transition-colors ${
+                                                product.isAvailable 
+                                                    ? 'hover:bg-[#FDFCFB]' 
+                                                    : 'bg-gray-50/50'
+                                            }`}
+                                        >
+                                            <td className="px-3 py-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    {hasVariants && (
+                                                        <button
+                                                            onClick={() => toggleProductExpansion(product.id)}
+                                                            className="p-0.5 text-[#8B7355] hover:text-[#4A7C59] hover:bg-[#E8F0EA] rounded transition-colors flex-shrink-0"
+                                                            title={isExpanded ? 'Collapse sizes' : 'Expand sizes'}
+                                                        >
+                                                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                                        </button>
+                                                    )}
+                                                    <div className={`text-sm font-medium ${
+                                                        product.isAvailable ? 'text-[#5C4A3D]' : 'text-gray-400'
+                                                    }`}>
+                                                        {product.name}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    <select
+                                                        value={product.category || ''}
+                                                        onChange={(e) => handleCategoryChange(product, e.target.value)}
+                                                        className="text-xs border border-[#E5DDD3] rounded px-1.5 py-0.5 bg-white text-[#5C4A3D] focus:outline-none focus:ring-1 focus:ring-[#4A7C59]/30 focus:border-[#4A7C59]"
+                                                    >
+                                                        <option value="">No category</option>
+                                                        {allCategories.map((cat) => (
                                                     <option key={cat} value={cat}>
                                                         {cat}
                                                     </option>
@@ -386,7 +571,100 @@ export default function ProductList() {
                                             <div className={`text-sm font-medium tabular-nums ${
                                                 product.isAvailable ? 'text-[#5C4A3D]' : 'text-gray-400'
                                             }`}>
-                                                {formatPrice(product.price)}
+                                                {hasVariants ? (
+                                                    // Show price range for products with variants
+                                                    (() => {
+                                                        const prices = product.variants!.map(v => v.unitPrice);
+                                                        const minPrice = Math.min(...prices);
+                                                        const maxPrice = Math.max(...prices);
+                                                        return minPrice === maxPrice 
+                                                            ? formatPrice(minPrice)
+                                                            : `${formatPrice(minPrice)}–${formatPrice(maxPrice)}`;
+                                                    })()
+                                                ) : (
+                                                    formatPrice(product.price)
+                                                )}
+                                            </div>
+                                        )}
+                                    </td>
+                                    {/* Stock Column */}
+                                    <td className="px-3 py-2">
+                                        {editingQuantityId === product.id ? (
+                                            <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center gap-1">
+                                                    <select
+                                                        value={quantityMode}
+                                                        onChange={(e) => {
+                                                            setQuantityMode(e.target.value as 'set' | 'add');
+                                                            setTempQuantity(e.target.value === 'set' ? String(product.quantity) : '');
+                                                        }}
+                                                        className="text-xs border border-[#E5DDD3] rounded px-1 py-0.5 bg-white"
+                                                    >
+                                                        <option value="set">Set to</option>
+                                                        <option value="add">Add</option>
+                                                    </select>
+                                                    <input
+                                                        type="number"
+                                                        min={quantityMode === 'set' ? '0' : undefined}
+                                                        value={tempQuantity}
+                                                        onChange={(e) => setTempQuantity(e.target.value)}
+                                                        onBlur={() => tempQuantity && saveQuantity(product)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && tempQuantity) {
+                                                                saveQuantity(product);
+                                                            }
+                                                            if (e.key === 'Escape') {
+                                                                setEditingQuantityId(null);
+                                                            }
+                                                        }}
+                                                        autoFocus
+                                                        placeholder={quantityMode === 'add' ? '+/-' : '0'}
+                                                        className="w-14 text-sm text-center font-medium border border-[#4A7C59] rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/30"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : hasVariants ? (
+                                            /* Variant-based stock display */
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span className={`text-sm font-bold tabular-nums px-2 py-0.5 rounded ${getStockStatus(product.quantity).color}`}>
+                                                    {product.quantity}
+                                                </span>
+                                                {!isExpanded && (
+                                                    <button
+                                                        onClick={() => toggleProductExpansion(product.id)}
+                                                        className="text-[10px] text-[#8B7355] leading-tight text-center max-w-[120px] hover:text-[#4A7C59] transition-colors"
+                                                        title="Click to expand sizes"
+                                                    >
+                                                        {product.variants!.map((v, i) => (
+                                                            <span key={v.id}>
+                                                                {i > 0 && <span className="text-[#D4C4B5]"> · </span>}
+                                                                <span className={v.quantity === 0 ? 'text-red-400' : ''}>
+                                                                    {v.sizeOz}oz<span className="font-medium">:{v.quantity}</span>
+                                                                </span>
+                                                            </span>
+                                                        ))}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            /* Simple stock display for products without variants */
+                                            <div 
+                                                className="flex flex-col items-center gap-1 cursor-pointer group"
+                                                onClick={() => startEditingQuantity(product, 'set')}
+                                                title="Click to edit stock"
+                                            >
+                                                <span className={`text-sm font-bold tabular-nums px-2 py-0.5 rounded ${getStockStatus(product.quantity).color}`}>
+                                                    {product.quantity}
+                                                </span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        startEditingQuantity(product, 'add');
+                                                    }}
+                                                    className="text-xs text-[#4A7C59] opacity-0 group-hover:opacity-100 hover:underline transition-opacity"
+                                                >
+                                                    + Add stock
+                                                </button>
                                             </div>
                                         )}
                                     </td>
@@ -429,7 +707,93 @@ export default function ProductList() {
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                                
+                                {/* Variant Rows (expandable) - Compact full-width design */}
+                                {hasVariants && isExpanded && (
+                                    <tr>
+                                        <td colSpan={5} className="p-0 pt-0 pb-2">
+                                            <div className="bg-gradient-to-r from-[#F5F0EB] to-[#FDFCFB] border-l-[3px] border-l-[#4A7C59] mx-4 rounded-r shadow-sm">
+                                                {product.variants!.map((variant, idx) => (
+                                                    <div 
+                                                        key={variant.id}
+                                                        className={`flex items-center justify-between px-4 py-2.5 hover:bg-white/50 transition-colors ${
+                                                            idx > 0 ? 'border-t border-[#E5DDD3]' : ''
+                                                        }`}
+                                                    >
+                                                        {/* Size & Price */}
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="flex items-center gap-2 min-w-[140px]">
+                                                                <Package size={12} className="text-[#8B7355] flex-shrink-0" />
+                                                                <span className="text-sm font-medium text-[#5C4A3D]">{variant.sizeLabel}</span>
+                                                            </div>
+                                                            <span className="text-sm text-[#8B7355] tabular-nums">
+                                                                {formatPrice(variant.unitPrice)}
+                                                            </span>
+                                                        </div>
+                                                        
+                                                        {/* Stock with inline editing */}
+                                                        {editingVariantId === variant.id ? (
+                                                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                                <select
+                                                                    value={variantQuantityMode}
+                                                                    onChange={(e) => {
+                                                                        setVariantQuantityMode(e.target.value as 'set' | 'add');
+                                                                        setTempVariantQuantity(e.target.value === 'set' ? String(variant.quantity) : '');
+                                                                    }}
+                                                                    className="text-xs border border-[#E5DDD3] rounded px-1.5 py-1 bg-white"
+                                                                >
+                                                                    <option value="add">+</option>
+                                                                    <option value="set">=</option>
+                                                                </select>
+                                                                <input
+                                                                    type="number"
+                                                                    min={variantQuantityMode === 'set' ? '0' : undefined}
+                                                                    value={tempVariantQuantity}
+                                                                    onChange={(e) => setTempVariantQuantity(e.target.value)}
+                                                                    onBlur={() => tempVariantQuantity && saveVariantQuantity(product.id, variant)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter' && tempVariantQuantity) {
+                                                                            saveVariantQuantity(product.id, variant);
+                                                                        }
+                                                                        if (e.key === 'Escape') {
+                                                                            setEditingVariantId(null);
+                                                                        }
+                                                                    }}
+                                                                    autoFocus
+                                                                    placeholder="qty"
+                                                                    className="w-16 text-sm text-center font-medium border border-[#4A7C59] rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/30"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => startEditingVariantQuantity(variant, 'add')}
+                                                                className="flex items-center gap-2 group"
+                                                                title="Click to adjust stock"
+                                                            >
+                                                                {(() => {
+                                                                    const status = getStockStatus(variant.quantity);
+                                                                    return (
+                                                                        <>
+                                                                            <span className={`text-sm font-bold tabular-nums px-2 py-0.5 rounded ${status.color}`}>
+                                                                                {variant.quantity}
+                                                                            </span>
+                                                                            <span className="text-xs text-[#4A7C59] opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                                edit
+                                                                            </span>
+                                                                        </>
+                                                                    );
+                                                                })()}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                                </React.Fragment>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

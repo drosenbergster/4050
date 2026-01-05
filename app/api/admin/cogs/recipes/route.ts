@@ -50,6 +50,32 @@ export async function GET(request: NextRequest) {
             isAvailable: true,
             price: true
           }
+        },
+        // Include the linked ProductFlavor from the new hierarchy
+        flavor: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            imageUrl: true,
+            isAvailable: true,
+            categoryId: true,
+            category: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            sizes: {
+              select: {
+                id: true,
+                sizeLabel: true,
+                unitPrice: true,
+                quantity: true
+              },
+              orderBy: { sizeOz: 'asc' }
+            }
+          }
         }
       },
       orderBy: { name: 'asc' }
@@ -98,7 +124,13 @@ export async function POST(request: NextRequest) {
             ingredient: true
           }
         },
-        product: true
+        product: true,
+        flavor: {
+          include: {
+            category: true,
+            sizes: true
+          }
+        }
       }
     });
 

@@ -2,22 +2,74 @@ import { prisma } from '@/lib/server/db';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Leaf, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Leaf } from 'lucide-react';
 import PurchaseOptions from './purchase-options';
-import { getProductDetailsByName } from '@/lib/product-details';
-import { STATIC_PRODUCTS } from '@/lib/static-data';
 
 interface ProductPageProps {
   params: Promise<{ id: string }>;
 }
 
-// Product details with optional recipe/ingredient info
+// Size type for the purchase options component
+export interface ProductSizeOption {
+  key: string;
+  label: string;
+  unitPrice: number;
+  quantity: number;
+  sizeOz: number;
+}
+
+// Fetch product flavor with all details
 async function getProduct(id: string) {
-  console.log('getProduct called with id:', id);
   try {
+    // First try to find as a ProductFlavor (new hierarchy)
+    const flavor = await prisma.productFlavor.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        sizes: {
+          where: { isActive: true },
+          orderBy: { sizeOz: 'asc' },
+        },
+        cogsRecipe: {
+          include: {
+            ingredients: {
+              include: {
+                ingredient: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (flavor) {
+      return {
+        id: flavor.id,
+        name: flavor.name,
+        fullName: flavor.name,
+        categoryName: flavor.category.name,
+        description: flavor.description || '',
+        imageUrl: flavor.imageUrl || flavor.category.imageUrl || '',
+        isAvailable: flavor.isAvailable,
+        sizes: flavor.sizes.map((s) => ({
+          key: s.sizeKey,
+          label: s.sizeLabel,
+          unitPrice: s.unitPrice,
+          quantity: s.quantity,
+          sizeOz: s.sizeOz,
+        })),
+        ingredients: flavor.cogsRecipe?.ingredients?.map((ri) => ri.ingredient.name) || [],
+      };
+    }
+
+    // Fallback: Try legacy Product table
     const product = await prisma.product.findUnique({
       where: { id },
       include: {
+        variants: {
+          where: { isActive: true },
+          orderBy: { sizeOz: 'asc' },
+        },
         cogsRecipe: {
           include: {
             ingredients: {
@@ -31,26 +83,32 @@ async function getProduct(id: string) {
     });
 
     if (product) {
-        console.log('Found product in DB:', product.name);
-        return product;
+      return {
+        id: product.id,
+        name: product.name,
+        fullName: product.name,
+        categoryName: product.category || 'Other',
+        description: product.description || '',
+        imageUrl: product.imageUrl || '',
+        isAvailable: product.isAvailable,
+        sizes: product.variants?.length
+          ? product.variants.map((v) => ({
+              key: v.sizeKey,
+              label: v.sizeLabel,
+              unitPrice: v.unitPrice,
+              quantity: v.quantity,
+              sizeOz: v.sizeOz,
+            }))
+          : [{ key: 'default', label: 'Regular', unitPrice: product.price, quantity: product.quantity, sizeOz: 16 }],
+        ingredients: product.cogsRecipe?.ingredients?.map((ri) => ri.ingredient.name) || [],
+      };
     }
+
+    return null;
   } catch (e) {
     console.error('DB fetch failed:', e);
+    return null;
   }
-
-  // Fallback to static data
-  console.log('Checking static products. Count:', STATIC_PRODUCTS.length);
-  const staticProduct = STATIC_PRODUCTS.find((p) => p.id === id);
-  if (staticProduct) {
-    console.log('Found static product:', staticProduct.name);
-    return {
-      ...staticProduct,
-      cogsRecipe: null, // Static data doesn't have recipe relations
-    };
-  }
-
-  console.log('Product not found in static either.');
-  return null;
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
@@ -61,19 +119,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
     notFound();
   }
 
-  const details = getProductDetailsByName(product.name);
-  const sizes = details?.sizes?.length
-    ? details.sizes
-    : [{ key: 'default', label: 'Regular', unitPrice: product.price }];
+  // Filter to only show in-stock sizes
+  const inStockSizes = product.sizes.filter((s) => s.quantity > 0);
 
-  // Extract ingredients from recipe if available
-  const recipeIngredients = product.cogsRecipe?.ingredients?.map(
-    (ri) => ri.ingredient.name
-  ) || [];
-
-  const displayIngredients = recipeIngredients.length > 0 
-    ? recipeIngredients 
-    : (details?.ingredients ?? []);
+  // Determine if product is purchasable
+  const canPurchase = product.isAvailable && inStockSizes.length > 0;
 
   return (
     <main className="bg-[#FDF8F3] min-h-screen py-6 md:py-10">
@@ -94,7 +144,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               {product.imageUrl ? (
                 <Image
                   src={product.imageUrl}
-                  alt={product.name}
+                  alt={product.fullName}
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, 50vw"
@@ -106,10 +156,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   4050
                 </div>
               )}
-              {!product.isAvailable && (
+              {!canPurchase && (
                 <div className="absolute inset-0 bg-[#FDF8F3]/80 backdrop-blur-sm flex items-center justify-center">
                   <span className="text-[#5C4A3D] text-sm font-bold uppercase tracking-wider border-y border-[#5C4A3D] py-2 px-4">
-                    Currently Unavailable
+                    {!product.isAvailable ? 'Currently Unavailable' : 'Out of Stock'}
                   </span>
                 </div>
               )}
@@ -118,50 +168,49 @@ export default async function ProductPage({ params }: ProductPageProps) {
             {/* Product Info */}
             <div className="p-6 md:p-8 flex flex-col">
               <div className="flex-grow">
+                {/* Category Badge */}
+                <div className="text-xs text-[#8B7355] uppercase tracking-wider mb-1">
+                  {product.categoryName}
+                </div>
+                
                 <h1 className="text-2xl md:text-3xl font-serif font-bold text-[#5C4A3D] mb-2">
-                  {product.name}
+                  {product.fullName}
                 </h1>
                 
-                <p className="text-[#636E72] font-serif italic mb-6">
-                  {product.description}
-                </p>
+                {product.description && (
+                  <p className="text-[#636E72] font-serif italic mb-6">
+                    {product.description}
+                  </p>
+                )}
 
                 {/* Purchase Options */}
                 <div className="mb-6">
-                  <PurchaseOptions product={product} sizes={sizes} disabled={!product.isAvailable} />
+                  <PurchaseOptions 
+                    product={product} 
+                    sizes={inStockSizes} 
+                    disabled={!canPurchase} 
+                  />
                 </div>
 
                 {/* Ingredients */}
-                {displayIngredients.length > 0 && (
+                {product.ingredients.length > 0 && (
                   <div className="mb-6">
                     <h2 className="text-sm font-bold text-[#5C4A3D] uppercase tracking-wide mb-3 flex items-center gap-2">
                       <Leaf size={14} className="text-[#4A7C59]" />
                       Ingredients
                     </h2>
                     <p className="text-sm text-[#636E72]">
-                      {displayIngredients.join(', ')}
+                      {product.ingredients.join(', ')}
                     </p>
                   </div>
                 )}
 
-                {/* Allergen Info */}
-                {details?.allergens?.length ? (
-                  <div className="mb-6">
-                    <h2 className="text-sm font-bold text-[#5C4A3D] uppercase tracking-wide mb-3 flex items-center gap-2">
-                      <AlertTriangle size={14} className="text-amber-600" />
-                      Allergen Information
-                    </h2>
-                    <p className="text-sm text-[#636E72]">
-                      Contains: {details.allergens.join(', ')}
-                    </p>
+                {/* Allergen Info - No common allergens for preserves */}
+                <div className="mb-6">
+                  <div className="text-xs text-[#8B7355] bg-[#F5EDE4] rounded-lg px-3 py-2 inline-block">
+                    ✓ No common allergens
                   </div>
-                ) : (
-                  <div className="mb-6">
-                    <div className="text-xs text-[#8B7355] bg-[#F5EDE4] rounded-lg px-3 py-2 inline-block">
-                      ✓ No common allergens
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           </div>

@@ -4,15 +4,115 @@
  * These types are used across frontend and backend to ensure type safety.
  */
 
-// Product types
+// ============================================
+// NEW PRODUCT HIERARCHY
+// Category → Flavor → Size → Batch
+// ============================================
+
+// Base product category (e.g., Apple Butter, Applesauce, Jams, Pickles)
+export interface ProductCategory {
+  id: string;
+  name: string;          // "Apple Butter", "Applesauce", "Jams", "Pickles"
+  description: string | null;
+  imageUrl: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  flavors?: ProductFlavor[];
+}
+
+// Flavor variant of a category (e.g., Caramel Thyme, Maple Cinnamon, Classic)
+export interface ProductFlavor {
+  id: string;
+  categoryId: string;
+  name: string;          // "Caramel Thyme", "Classic", "Maple Cinnamon"
+  description: string | null;
+  imageUrl: string | null;
+  isAvailable: boolean;
+  sortOrder: number;
+  cogsRecipeId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  category?: ProductCategory;
+  sizes?: ProductSize[];
+  batches?: ProductBatch[];
+  // Computed properties (for display)
+  fullName?: string;     // e.g., "Caramel Thyme Apple Butter"
+  totalQuantity?: number; // Sum of all size quantities
+}
+
+// Size option for a flavor (e.g., 8oz, 16oz, 32oz)
+export interface ProductSize {
+  id: string;
+  flavorId: string;
+  sizeKey: string;       // "small-8oz", "regular-16oz", "quart-32oz"
+  sizeLabel: string;     // "Small Jar (8 oz)", "Regular Jar (16 oz)"
+  sizeOz: number;        // 8, 16, 32 - numeric for sorting
+  unitPrice: number;     // Price in cents
+  quantity: number;      // Current stock count
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+  flavor?: ProductFlavor;
+}
+
+// Production batch tracking
+export interface ProductBatch {
+  id: string;
+  flavorId: string;
+  sizeId: string | null;
+  batchDate: Date;
+  quantity: number;      // Number of units produced in this batch
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  flavor?: ProductFlavor;
+  size?: ProductSize;
+}
+
+// Helper type for flavor with computed full name
+export interface ProductFlavorWithDetails extends ProductFlavor {
+  category: ProductCategory;
+  sizes: ProductSize[];
+  fullName: string;      // Computed: "Caramel Thyme Apple Butter"
+  totalQuantity: number; // Computed: sum of all size quantities
+  minPrice: number;      // Computed: lowest size price
+  maxPrice: number;      // Computed: highest size price
+}
+
+// ============================================
+// LEGACY PRODUCT TYPES (kept for backwards compatibility)
+// ============================================
+
+// Legacy Product type (use ProductFlavor in new code)
 export interface Product {
   id: string;
   name: string;
   description: string;
-  price: number; // in cents (e.g., 999 = $9.99)
+  price: number; // in cents - base/default price (used if no variants)
   imageUrl: string;
   category: string | null;
   isAvailable: boolean;
+  quantity: number; // Legacy: aggregate stock (sum of variants or manual entry)
+  createdAt: Date;
+  updatedAt: Date;
+  variants?: ProductVariant[]; // Size variants with per-variant inventory
+}
+
+// Legacy ProductVariant (use ProductSize in new code)
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  sku: string | null;
+  sizeKey: string;      // Stable key: "small-8oz", "quart-32oz"
+  sizeLabel: string;    // Display: "Small Jar (8 oz)"
+  sizeOz: number;       // Numeric: 4, 6, 8, 12, 16, 32
+  unitPrice: number;    // Price in cents for this size
+  quantity: number;     // Stock count for this variant
+  isActive: boolean;
+  sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,8 +153,14 @@ export interface Order {
 export interface OrderItem {
   id: string;
   orderId: string;
-  productId: string;
-  productName: string; // Snapshot at time of order
+  // New hierarchy references
+  flavorId: string | null;
+  sizeKey: string | null;
+  // Legacy fields (kept for backwards compatibility)
+  productId: string | null;
+  productName: string; // Snapshot of full product name at time of order
+  variantKey: string | null; // Legacy: Size variant key for inventory tracking
+  // Order details
   quantity: number;
   unitPrice: number; // in cents (snapshot)
   lineTotal: number; // in cents
@@ -76,10 +182,10 @@ export interface Cart {
 }
 
 export interface CartItemWithProduct {
-  productId: string;
+  productId: string;   // Legacy: Product ID
   quantity: number;
-  product: Product;
-  lineTotal: number; // calculated: product.price * quantity
+  product: Product;    // Legacy: Product data
+  lineTotal: number;   // calculated: product.price * quantity
   /**
    * Optional variant metadata (e.g. jar size).
    * When present, checkout will validate and use unitPrice.
@@ -87,6 +193,9 @@ export interface CartItemWithProduct {
   variantKey?: string;
   variantLabel?: string;
   unitPrice?: number; // in cents (overrides product.price for this cart line)
+  // New hierarchy fields
+  flavorId?: string;   // ProductFlavor ID
+  sizeId?: string;     // ProductSize ID
 }
 
 export interface CartWithProducts {

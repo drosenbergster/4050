@@ -2,12 +2,21 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
 import { getAuthSession } from '@/lib/server/auth';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const includeVariants = searchParams.get('includeVariants') === 'true';
+
     const products = await prisma.product.findMany({
       orderBy: {
         name: 'asc',
       },
+      include: includeVariants ? {
+        variants: {
+          where: { isActive: true },
+          orderBy: [{ sortOrder: 'asc' }, { sizeOz: 'asc' }],
+        },
+      } : undefined,
     });
     return NextResponse.json(products);
   } catch (error) {
@@ -42,6 +51,7 @@ export async function POST(request: Request) {
         price,
         imageUrl: imageUrl || '',
         isAvailable: isAvailable ?? true,
+        quantity: 0, // New products start with 0 stock
       },
     });
 

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { formatPrice } from '@/lib/format';
 import { ShoppingBag, LogOut, Leaf, CheckCircle, Clock, Truck, Home, Filter, BookOpen, Calendar, Store, Heart } from 'lucide-react';
 import Cookbook from './components/cookbook';
-import ProductList from './components/product-list';
+import CatalogManager from './components/catalog-manager';
 import GardenPlanner from './components/garden-planner';
 import OrganizationManager from './components/organization-manager';
 import { CURRENT_CAUSES } from '@/lib/causes';
@@ -346,7 +346,7 @@ export default function AdminDashboard() {
             </details>
           </div>
         ) : activeTab === 'shop' ? (
-          <ProductList />
+          <CatalogManager />
         ) : activeTab === 'cogs' ? (
           <Cookbook />
         ) : activeTab === 'planner' ? (

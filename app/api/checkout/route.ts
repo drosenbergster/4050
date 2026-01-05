@@ -59,7 +59,8 @@ export async function POST(request: Request) {
 
         // 1. Validate items and calculate total
         // Products must exist in the database to process an order
-        let dbProducts: Product[] = [];
+        type ProductWithVariants = Product & { variants?: Array<{ sizeKey: string; quantity: number; sizeLabel: string }> };
+        let dbProducts: ProductWithVariants[] = [];
         const productIds = items
             .map((item: unknown) => {
                 if (typeof item !== 'object' || item === null) return null;
@@ -81,6 +82,12 @@ export async function POST(request: Request) {
                     id: { in: productIds },
                     isAvailable: true,
                 },
+                include: {
+                    variants: {
+                        where: { isActive: true },
+                        select: { sizeKey: true, quantity: true, sizeLabel: true },
+                    },
+                },
             });
         } catch (dbError) {
             console.error('Database query failed during checkout:', dbError);
@@ -96,10 +103,54 @@ export async function POST(request: Request) {
             );
         }
 
+        // Validate stock quantities (variant-aware)
+        const stockErrors: string[] = [];
+        for (const rawItem of items as unknown[]) {
+            if (typeof rawItem !== 'object' || rawItem === null) continue;
+            const productId = (rawItem as { productId?: unknown }).productId;
+            const quantity = (rawItem as { quantity?: unknown }).quantity;
+            const variantKey = (rawItem as { variantKey?: unknown }).variantKey;
+            if (typeof productId !== 'string' || typeof quantity !== 'number') continue;
+            
+            const product = dbProducts.find((p) => p.id === productId);
+            if (!product) continue;
+
+            // Check variant-level stock if variantKey provided
+            if (typeof variantKey === 'string' && product.variants && product.variants.length > 0) {
+                const variant = product.variants.find(v => v.sizeKey === variantKey);
+                if (!variant) {
+                    stockErrors.push(`"${product.name}" size "${variantKey}" is no longer available`);
+                } else if (variant.quantity < quantity) {
+                    if (variant.quantity === 0) {
+                        stockErrors.push(`"${product.name}" (${variant.sizeLabel}) is out of stock`);
+                    } else {
+                        stockErrors.push(`"${product.name}" (${variant.sizeLabel}) only has ${variant.quantity} in stock (you requested ${quantity})`);
+                    }
+                }
+            } else {
+                // Fall back to product-level stock
+                if (product.quantity < quantity) {
+                    if (product.quantity === 0) {
+                        stockErrors.push(`"${product.name}" is out of stock`);
+                    } else {
+                        stockErrors.push(`"${product.name}" only has ${product.quantity} in stock (you requested ${quantity})`);
+                    }
+                }
+            }
+        }
+        
+        if (stockErrors.length > 0) {
+            return NextResponse.json(
+                { error: stockErrors.join('. ') + '. Please update your basket.' },
+                { status: 400 }
+            );
+        }
+
         let subtotal = 0;
         const orderItemsData: Array<{
             productId: string;
             productName: string;
+            variantKey: string | null;
             quantity: number;
             unitPrice: number;
             lineTotal: number;
@@ -170,6 +221,7 @@ export async function POST(request: Request) {
             orderItemsData.push({
                 productId: product.id,
                 productName,
+                variantKey: typeof variantKeyRaw === 'string' ? variantKeyRaw : null,
                 quantity: quantity,
                 unitPrice,
                 lineTotal: lineTotal,

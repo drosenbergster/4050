@@ -3,12 +3,21 @@
 import { useMemo, useState } from 'react';
 import { Minus, Plus, Check } from 'lucide-react';
 import { useBasket } from '@/app/context/basket-context';
-import { Product } from '@/lib/types';
-import type { ProductSizeOption } from '@/lib/product-details';
 import { formatPrice } from '@/lib/format';
+import type { ProductSizeOption } from './page';
+
+// Product shape from the page
+interface ProductData {
+  id: string;
+  name: string;
+  fullName: string;
+  description: string;
+  imageUrl: string;
+  isAvailable: boolean;
+}
 
 interface PurchaseOptionsProps {
-  product: Product;
+  product: ProductData;
   sizes: ProductSizeOption[];
   disabled?: boolean;
 }
@@ -23,18 +32,46 @@ export default function PurchaseOptions({ product, sizes, disabled }: PurchaseOp
     return sizes.find((s) => s.key === selectedKey) ?? sizes[0];
   }, [sizes, selectedKey]);
 
-  const unitPrice = selected?.unitPrice ?? product.price;
+  const unitPrice = selected?.unitPrice ?? 0;
   const variantLabel = selected?.label;
   const variantKey = selected?.key;
+  const stockAvailable = selected?.quantity ?? 0;
+
+  // Prevent ordering more than available stock
+  const maxQuantity = stockAvailable;
+  const canIncrease = quantity < maxQuantity;
 
   const handleAdd = () => {
+    if (quantity > stockAvailable) return;
+    
     setIsAdding(true);
-    addToBasket(product, quantity, { variantKey, variantLabel, unitPrice });
+    // Create a product-like object for the basket
+    const productForBasket = {
+      id: product.id,
+      name: product.fullName,
+      description: product.description,
+      price: unitPrice,
+      imageUrl: product.imageUrl,
+      category: null,
+      isAvailable: product.isAvailable,
+      quantity: stockAvailable,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    addToBasket(productForBasket, quantity, { variantKey, variantLabel, unitPrice });
     setTimeout(() => {
       setIsAdding(false);
       setQuantity(1);
     }, 1500);
   };
+
+  if (sizes.length === 0) {
+    return (
+      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+        This product is currently out of stock.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -46,11 +83,15 @@ export default function PurchaseOptions({ product, sizes, disabled }: PurchaseOp
         <div className="grid gap-2">
           {sizes.map((s) => {
             const active = s.key === selectedKey;
+            const lowStock = s.quantity > 0 && s.quantity <= 3;
             return (
               <button
                 key={s.key}
                 type="button"
-                onClick={() => setSelectedKey(s.key)}
+                onClick={() => {
+                  setSelectedKey(s.key);
+                  setQuantity(1); // Reset quantity when changing size
+                }}
                 className={`flex items-center justify-between p-3 rounded-lg border transition-colors text-left ${
                   active
                     ? 'border-[#4A7C59] bg-[#E8F0EA]/40'
@@ -64,7 +105,12 @@ export default function PurchaseOptions({ product, sizes, disabled }: PurchaseOp
                     }`}
                     aria-hidden="true"
                   />
-                  <div className="font-medium text-[#5C4A3D]">{s.label}</div>
+                  <div>
+                    <div className="font-medium text-[#5C4A3D]">{s.label}</div>
+                    {lowStock && (
+                      <div className="text-xs text-amber-600">Only {s.quantity} left</div>
+                    )}
+                  </div>
                 </div>
                 <div className="font-bold text-[#4A7C59]">{formatPrice(s.unitPrice)}</div>
               </button>
@@ -88,9 +134,9 @@ export default function PurchaseOptions({ product, sizes, disabled }: PurchaseOp
           <span className="w-10 text-center font-medium text-[#5C4A3D] tabular-nums">{quantity}</span>
           <button
             type="button"
-            onClick={() => setQuantity(quantity + 1)}
+            onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
             className="p-2 text-[#636E72] hover:text-[#5C4A3D] transition-colors disabled:opacity-40"
-            disabled={disabled || isAdding}
+            disabled={disabled || isAdding || !canIncrease}
             aria-label="Increase quantity"
           >
             <Plus size={16} />
@@ -100,7 +146,7 @@ export default function PurchaseOptions({ product, sizes, disabled }: PurchaseOp
         <button
           type="button"
           onClick={handleAdd}
-          disabled={disabled || isAdding}
+          disabled={disabled || isAdding || quantity > stockAvailable}
           className={`flex-1 flex items-center justify-center gap-2 py-3 px-5 rounded-lg font-medium transition-all ${
             isAdding ? 'bg-[#4A7C59] text-white' : 'bg-[#5C4A3D] text-white hover:bg-[#4A7C59]'
           } disabled:opacity-40 disabled:cursor-not-allowed`}

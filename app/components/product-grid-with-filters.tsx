@@ -1,24 +1,28 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Product } from '@/lib/types';
 import HomemadeCard from './homemade-card';
 import { Search } from 'lucide-react';
+import { ShopProduct } from '@/app/shop/page';
 
 interface ProductGridWithFiltersProps {
-  products: (Product & { category: string })[];
+  products: ShopProduct[];
 }
-
-const CATEGORIES = ['All', 'Applesauces', 'Spreads', 'Dried Goods', 'Jams', 'Pickled Goods'];
 
 export default function ProductGridWithFilters({ products }: ProductGridWithFiltersProps) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Dynamically get categories from products
+  const categories = useMemo(() => {
+    const cats = new Set(products.map(p => p.categoryName));
+    return ['All', ...Array.from(cats).sort()];
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
-      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchesCategory = activeCategory === 'All' || p.categoryName === activeCategory;
+      const matchesSearch = p.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                            p.description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     });
@@ -29,7 +33,7 @@ export default function ProductGridWithFilters({ products }: ProductGridWithFilt
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-1 sm:px-0">
         {/* Category Filter Tabs */}
         <nav aria-label="Product categories" className="flex flex-wrap justify-center md:justify-start gap-1.5 sm:gap-2">
-          {CATEGORIES.map((category) => (
+          {categories.map((category) => (
             <button
               key={category}
               onClick={() => setActiveCategory(category)}

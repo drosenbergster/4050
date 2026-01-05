@@ -1,7 +1,7 @@
 # 4050 Simplified Architecture Document
 
-**Version:** 2.4 (Recipe Costing Feature)  
-**Date:** December 27, 2025  
+**Version:** 2.5 (Product Hierarchy & Catalog Management)  
+**Date:** January 4, 2026  
 **Status:** In Development  
 **Project:** 4050 Homemade Kindness
 
@@ -15,6 +15,7 @@ This document outlines the simplified fullstack architecture for 4050, focused o
 
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
+| 2026-01-04 | 2.5 | Product Hierarchy (Category→Flavor→Size→Batch), Catalog Management, Kitchen integration | Winston (Architect) |
 | 2025-12-27 | 2.4 | Added Recipe Costing feature with Ingredient Library | Winston (Architect) |
 | 2025-12-19 | 2.3 | Added Admin Order API routes and Search logic | James (Dev) |
 | 2025-12-18 | 2.2 | Transitioned from "Voices" to "Seeds of Kindness" ($10 = 1 seed) | John (PM) |
@@ -48,60 +49,139 @@ This document outlines the simplified fullstack architecture for 4050, focused o
 
 ---
 
-## API Routes
-
-### Public API
-| Endpoint | Method | Purpose | Auth Required |
-|----------|--------|---------|---------------|
-| `/api/products` | GET | Fetch public product list | No |
-| `/api/checkout` | POST | Initialize Stripe and Order | No |
-| `/api/webhooks/stripe` | POST | Handle Stripe payment success/fail | No |
-
-### Admin API
-| Endpoint | Method | Purpose | Auth Required |
-|----------|--------|---------|---------------|
-| `/api/products` | POST | Create new product | Yes (Admin) |
-| `/api/products/[id]` | PUT/DELETE | Update/Delete product | Yes (Admin) |
-| `/api/admin/orders` | GET | Fetch all orders with items | Yes (Admin) |
-| `/api/admin/orders/[id]` | PATCH | Update order status | Yes (Admin) |
-
-### Recipe Costing API (Admin Planning Tools)
-| Endpoint | Method | Purpose | Auth Required |
-|----------|--------|---------|---------------|
-| `/api/admin/cogs/ingredients` | GET | List all ingredients | Yes (Admin) |
-| `/api/admin/cogs/ingredients` | POST | Create new ingredient | Yes (Admin) |
-| `/api/admin/cogs/ingredients/[id]` | GET/PATCH/DELETE | Manage single ingredient | Yes (Admin) |
-| `/api/admin/cogs/recipes` | GET | List all recipes with ingredients | Yes (Admin) |
-| `/api/admin/cogs/recipes` | POST | Create new recipe | Yes (Admin) |
-| `/api/admin/cogs/recipes/[id]` | GET/PATCH/DELETE | Manage single recipe | Yes (Admin) |
-
----
-
 ## Data Models
 
-### Product
-- id, name, description, price, imageUrl, isAvailable, category
+### Product Hierarchy (v2.5)
 
-### Order
+The product system follows a four-level hierarchy designed for artisan food products:
+
+```
+ProductCategory → ProductFlavor → ProductSize → ProductBatch
+```
+
+#### ProductCategory
+Top-level product groupings.
+- id, name (unique), description, imageUrl, sortOrder, isActive
+- Examples: "Jams and Spreads", "Applesauce", "Pickles", "Dried Goods"
+
+#### ProductFlavor
+Specific product variants within a category. **This is the primary "product" entity.**
+- id, categoryId, name, description, imageUrl, isAvailable, sortOrder
+- cogsRecipeId: Links to Kitchen recipe for cost/price management
+- Examples: "Caramel Thyme Apple Butter", "Classic Applesauce", "Raspberry Jam"
+
+#### ProductSize
+Size/packaging options for each flavor. **Inventory is tracked at this level.**
+- id, flavorId, sizeKey, sizeLabel, sizeOz, unitPrice, quantity, isActive, sortOrder
+- Examples: "8 oz jar" ($5.99), "16 oz jar" ($9.99)
+
+#### ProductBatch
+Production batch tracking for inventory management.
+- id, flavorId, sizeId (optional), batchDate, quantity, notes
+- Used to track when batches were made and increment inventory
+
+### Order System
+
+#### Order
 - id, customerName, customerEmail, customerPhone, shippingAddress (JSON), fulfillmentMethod
-- **proceedsChoice**: Selected cause ID
+- **proceedsChoice**: Selected cause ID (Seeds of Kindness)
 - **extraSupportAmount**: "Sow Extra Seeds" amount (cents)
 - **seedCount**: Calculated seeds sown (1 base + 1 per $10)
 - shippingCost, subtotal, total, paymentStatus, fulfillmentStatus, stripePaymentIntentId
 
-### Recipe Costing Models (Planning Tools)
+#### OrderItem
+- id, orderId, productName (snapshot), quantity, unitPrice, lineTotal
+- **flavorId**: Links to ProductFlavor (new hierarchy)
+- **sizeKey**: Size identifier for the ordered item
+- *Legacy fields*: productId, variantKey (for backwards compatibility)
+
+### Kitchen (Recipe Costing)
 
 #### Ingredient
-- id, name, unitCost, unit, isFromGarden, category, notes
-- Categories: **Garden** (homegrown, $0), **Pantry** (purchased), **Packaging** (containers)
+- id, name, unitCost, unit, source (GARDEN/PANTRY/PACKAGING), category, notes
+- Purchase tracking: purchaseSize, purchaseUnit, purchaseCost
 
 #### CogsRecipe
-- id, name, description, containerType, containerCost, labelCost, energyCost, retailPrice, notes
-- Has many **CogsRecipeIngredient** (junction table with quantity)
+- id, name, description, containerType, containerCost, labelCost, energyCost, retailPrice
+- status: IDEA → READY → PUBLISHED
+- batchYield: Number of jars per batch (for batch costing mode)
+- **Links to ProductFlavor** when published to store
 
-#### CogsRecipeIngredient
-- id, recipeId, ingredientId, quantity
-- Links recipes to ingredients with amounts
+### Garden Planner
+
+#### Crop
+- Growing timeline (seedStartWeek, harvestStart/End, peakStart/End)
+- Yield tracking (plantCount, yieldPerUnit, yieldUnit, lastYearYield)
+- Layout (spacingInches) for garden sandbox
+- Links to Ingredient for cost tracking
+
+#### SeasonalTask
+- Monthly task tracking with completion status
+
+#### GardenLayout
+- JSON canvas data for garden bed layouts
+
+### Organization Management (Seeds of Kindness)
+
+#### Organization
+- Beneficiary organizations for proceeds
+- status: ACTIVE, IN_POOL, PAST_PARTNER
+- category: FOOD, GARDEN, YOUTH, COMMUNITY
+
+#### Nomination
+- Community nominations for new beneficiary organizations
+
+---
+
+## API Routes
+
+### Public API
+| Endpoint | Method | Purpose | Auth |
+|----------|--------|---------|------|
+| `/api/products` | GET | Fetch public product list (legacy) | No |
+| `/api/catalog` | GET | Fetch full catalog hierarchy | No |
+| `/api/checkout` | POST | Initialize Stripe and Order | No |
+| `/api/webhooks/stripe` | POST | Handle Stripe payment events | No |
+| `/api/organizations` | GET | List active organizations | No |
+| `/api/organizations/nominate` | POST | Submit organization nomination | No |
+
+### Catalog API (Product Hierarchy)
+| Endpoint | Method | Purpose | Auth |
+|----------|--------|---------|------|
+| `/api/catalog` | GET | Full catalog (categories + flavors + sizes) | No |
+| `/api/catalog/categories` | GET/POST | List/create categories | Yes |
+| `/api/catalog/flavors` | GET/POST | List/create flavors | Yes |
+| `/api/catalog/flavors/[id]` | GET/PUT/DELETE | Manage single flavor | Yes |
+| `/api/catalog/flavors/[id]/sizes` | GET/POST | List/create sizes for flavor | Yes |
+| `/api/catalog/sizes/[id]` | GET/PUT/DELETE | Manage single size | Yes |
+| `/api/catalog/sizes/[id]/inventory` | PATCH | Adjust size inventory (+/-) | Yes |
+| `/api/catalog/batches` | GET/POST | List/create production batches | Yes |
+
+### Kitchen API (Recipe Costing)
+| Endpoint | Method | Purpose | Auth |
+|----------|--------|---------|------|
+| `/api/admin/cogs/ingredients` | GET/POST | List/create ingredients | Yes |
+| `/api/admin/cogs/ingredients/[id]` | GET/PATCH/DELETE | Manage single ingredient | Yes |
+| `/api/admin/cogs/recipes` | GET/POST | List/create recipes (with status filter) | Yes |
+| `/api/admin/cogs/recipes/[id]` | GET/PATCH/DELETE | Manage single recipe | Yes |
+
+### Admin API
+| Endpoint | Method | Purpose | Auth |
+|----------|--------|---------|------|
+| `/api/admin/orders` | GET | Fetch all orders with items | Yes |
+| `/api/admin/orders/[id]` | PATCH | Update order status | Yes |
+| `/api/admin/products/from-recipe` | POST | Publish recipe to store | Yes |
+| `/api/admin/organizations` | GET/POST | Manage organizations | Yes |
+| `/api/admin/nominations` | GET | List nominations | Yes |
+| `/api/admin/nominations/[id]` | PATCH | Approve/reject nomination | Yes |
+
+### Garden Planner API
+| Endpoint | Method | Purpose | Auth |
+|----------|--------|---------|------|
+| `/api/admin/crops` | GET/POST | Manage crops | Yes |
+| `/api/admin/crops/[id]` | PATCH/DELETE | Single crop operations | Yes |
+| `/api/admin/tasks` | GET/POST | Manage seasonal tasks | Yes |
+| `/api/admin/layouts` | GET/POST | Manage garden layouts | Yes |
 
 ---
 
@@ -109,45 +189,113 @@ This document outlines the simplified fullstack architecture for 4050, focused o
 
 ### Public Pages
 - `/` - Homepage (The Heritage Garden Story)
-- `/shop` - From the Garden (Homemade Goods + Search)
+- `/shop` - From the Garden (Product catalog with filters)
+- `/product/[id]` - Product detail page (flavor with size selection)
 - `/basket` - Your Basket
 - `/checkout` - Guest Checkout (Hydration-safe)
 - `/thank-you` - Thank You (Seeds Sown summary)
 - `/about` - Our Story (PNW Backyard Heritage)
+- `/impact` - Seeds of Kindness impact page
+- `/privacy` - Privacy policy
 
 ### Admin Pages
 - `/admin/login` - Admin login (Google OAuth)
 - `/admin` - Dashboard with tabs:
   - **Orders** - Order fulfillment with packing slips & address labels
-  - **Products** - Product catalog management
-  - **Recipe Costing** - Cost calculator for planning new products
+  - **Shop** - Product catalog management (CatalogManager)
+  - **Kitchen** - Recipe costing with publish workflow
+  - **Garden Planner** - Seasonal timeline and layout sandbox
+  - **Organizations** - Seeds of Kindness beneficiary management
 - `/admin/dev` - Development testing (localhost only, no auth required)
+- `/admin/orders/[id]/*` - Order detail views (packing slip, address label)
 
 ---
 
 ## Key Workflows
 
+### Publishing a Product (Kitchen → Shop)
+
+1. **Create Recipe** in Kitchen (💡 Dreaming Up)
+   - Add ingredients with quantities
+   - Set container type, costs, retail price
+   
+2. **Mark Ready** (✨ Almost There)
+   - Recipe reviewed and ready for store
+   
+3. **Publish to Store** 
+   - Click "Put on Shelf" → Opens publish modal
+   - Select/create category, add description, image
+   - Creates ProductFlavor linked to recipe
+   
+4. **Add Sizes** in Shop tab
+   - Add size options (8oz, 16oz, etc.) with prices
+   - Prices come from Kitchen but can add size-specific pricing
+
+5. **Manage Inventory**
+   - Track stock at size level
+   - Add/subtract inventory inline
+
 ### Customer Purchase Flow
-1. Browse `/shop` → Search or Filter Homemade Goods.
-2. Click `+` icon → Add to Basket (Toast feedback).
-3. View `/basket` → Review items.
-4. Click checkout → `/checkout` (Client-side hydration handled).
-5. Fill form → Select pickup/shipping.
-6. **Seeds of Kindness** → "Where would you like to plant your seeds today?"
-7. **Sow Extra Seeds** → Optional voluntary gift.
-8. Enter payment → Stripe processes (Server-side validation).
-9. Success → `/thank-you` page showing seeds sown.
+
+1. Browse `/shop` → Filter by category, search products
+2. Click product → View detail page with sizes
+3. Select size → Add to Basket
+4. View `/basket` → Review items
+5. Checkout → Fill details, select pickup/shipping
+6. **Seeds of Kindness** → Choose beneficiary
+7. **Sow Extra Seeds** → Optional additional donation
+8. Payment → Stripe processes
+9. Success → `/thank-you` with seeds sown summary
 
 ### Admin Order Fulfillment
-1. Login → Navigate to `/admin`.
-2. View **Seed Growth Tally** → Live percentages.
-3. Review order list → **Click order** to see details.
-4. Mark as fulfilled → Toggle status in modal or list.
+
+1. Login → Navigate to `/admin`
+2. View pending orders with quick counts
+3. Click order → View details in modal
+4. Mark as fulfilled → Toggle status
+
+---
+
+## Database Schema Considerations
+
+### Legacy Models (Migration Path)
+
+The schema includes legacy `Product` and `ProductVariant` models for backwards compatibility. New code should use the Product Hierarchy:
+
+| Legacy | New Equivalent |
+|--------|----------------|
+| Product | ProductFlavor |
+| ProductVariant | ProductSize |
+| Product.category | ProductCategory |
+
+### OrderItem Dual References
+
+OrderItem maintains both legacy (`productId`, `variantKey`) and new (`flavorId`, `sizeKey`) fields during transition:
+
+```prisma
+model OrderItem {
+  // New hierarchy
+  flavorId    String?
+  sizeKey     String?
+  // Legacy (backwards compatibility)
+  productId   String?
+  variantKey  String?
+}
+```
+
+### Inventory Tracking
+
+Stock is tracked at the **ProductSize** level:
+- `ProductSize.quantity` holds current stock
+- Use `/api/catalog/sizes/[id]/inventory` for adjustments
+- Batches are informational (production tracking)
 
 ---
 
 ## Deployment
+
 - **Frontend/Backend:** Vercel
-- **Database:** Supabase/Railway PostgreSQL
+- **Database:** Supabase PostgreSQL
 - **Storage:** Vercel Blob
 - **Migrations:** `prisma migrate deploy`
+- **Environment:** See `docs/setup/` for configuration guides
