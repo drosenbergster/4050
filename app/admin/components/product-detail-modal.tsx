@@ -30,7 +30,16 @@ interface ProductSize {
   sizeOz: number;
   unitPrice: number;
   quantity: number;
-  containerType: string | null;
+  containerType?: string | null;
+  // Additional optional fields that may come from catalog-manager
+  flavorId?: string;
+  isActive?: boolean;
+  ingredientCost?: number;
+  labelCost?: number;
+  containerCost?: number;
+  cogs?: number;
+  suggestedPrice?: number;
+  margin?: number;
 }
 
 interface ProductFlavor {
