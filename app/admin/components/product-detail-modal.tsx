@@ -39,13 +39,22 @@ interface ProductFlavor {
   description: string | null;
   imageUrl: string | null;
   isAvailable: boolean;
-  cogsRecipeId: string | null;
+  cogsRecipeId?: string | null;
   cogsRecipe?: CogsRecipe | null;
   sizes: ProductSize[];
   category?: {
     id: string;
     name: string;
   };
+  // Extra fields from catalog-manager (not used but may be present)
+  categoryId?: string;
+  fullName?: string;
+  totalQuantity?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  hasStock?: boolean;
+  costPerOz?: number;
+  costUpdatedAt?: string | null;
 }
 
 interface AvailableIngredient {
