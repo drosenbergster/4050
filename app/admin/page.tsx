@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [showPendingOnly, setShowPendingOnly] = useState(true); // Default to pending
+  const [expandRecipeId, setExpandRecipeId] = useState<string | null>(null); // For "View recipe" navigation
 
   // Counts for quick reference
   const pendingOrders = orders.filter(o => o.fulfillmentStatus === 'PENDING');
@@ -43,6 +44,19 @@ export default function AdminDashboard() {
       fetchOrders();
     }
   }, [session, activeTab]);
+
+  // Listen for "View recipe" navigation from Shop
+  useEffect(() => {
+    const handleNavigateToRecipe = (e: CustomEvent<{ recipeId: string }>) => {
+      setExpandRecipeId(e.detail.recipeId);
+      setActiveTab('cogs'); // Switch to Kitchen tab
+    };
+
+    window.addEventListener('navigate-to-recipe', handleNavigateToRecipe as EventListener);
+    return () => {
+      window.removeEventListener('navigate-to-recipe', handleNavigateToRecipe as EventListener);
+    };
+  }, []);
 
   const fetchOrders = async () => {
     setIsLoadingOrders(true);
@@ -348,7 +362,10 @@ export default function AdminDashboard() {
         ) : activeTab === 'shop' ? (
           <CatalogManager />
         ) : activeTab === 'cogs' ? (
-          <Cookbook />
+          <Cookbook 
+            expandRecipeId={expandRecipeId} 
+            onRecipeExpanded={() => setExpandRecipeId(null)} 
+          />
         ) : activeTab === 'planner' ? (
           <GardenPlanner />
         ) : (

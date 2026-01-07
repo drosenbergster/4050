@@ -7,10 +7,11 @@ import { ShopProduct } from '@/app/shop/page';
 
 interface ProductGridWithFiltersProps {
   products: ShopProduct[];
+  initialCategory?: string;
 }
 
-export default function ProductGridWithFilters({ products }: ProductGridWithFiltersProps) {
-  const [activeCategory, setActiveCategory] = useState('All');
+export default function ProductGridWithFilters({ products, initialCategory = 'All' }: ProductGridWithFiltersProps) {
+  const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Dynamically get categories from products

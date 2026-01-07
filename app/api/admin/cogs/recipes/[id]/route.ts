@@ -108,6 +108,15 @@ export async function PATCH(
             isAvailable: true,
             price: true
           }
+        },
+        flavor: {
+          select: {
+            id: true,
+            name: true,
+            sizes: {
+              select: { id: true }
+            }
+          }
         }
       }
     });
@@ -123,7 +132,23 @@ export async function PATCH(
       }
     }
 
-    return NextResponse.json(recipe);
+    // If ingredients or batchYield changed, update costUpdatedAt on linked ProductFlavor
+    const costAffectingChange = data.ingredients || data.batchYield !== undefined;
+    if (costAffectingChange && recipe.flavor) {
+      await prisma.productFlavor.update({
+        where: { id: recipe.flavor.id },
+        data: { costUpdatedAt: new Date() }
+      });
+    }
+
+    return NextResponse.json({
+      ...recipe,
+      costImpact: recipe.flavor ? {
+        flavorId: recipe.flavor.id,
+        flavorName: recipe.flavor.name,
+        sizeCount: recipe.flavor.sizes.length
+      } : null
+    });
   } catch (error) {
     console.error('Error updating recipe:', error);
     return NextResponse.json({ error: 'Failed to update recipe' }, { status: 500 });

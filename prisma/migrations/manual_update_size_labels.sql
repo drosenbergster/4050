@@ -21,3 +21,4 @@ WHERE "sizeKey" LIKE '%oz' AND "sizeLabel" LIKE '%Bag%';
 UPDATE product_variants SET "sizeKey" = "sizeOz" || 'oz'
 WHERE "sizeKey" LIKE '%-%';
 
+

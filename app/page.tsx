@@ -1,46 +1,51 @@
 import Image from 'next/image';
 import { MapPin, Clock } from 'lucide-react';
-import ProductPreview from '@/app/components/product-preview';
+import CategoryCards from '@/app/components/category-cards';
 import ImpactModal from '@/app/components/impact-modal';
 
 export default function Home() {
   return (
     <div className="flex flex-col">
-      {/* Hero Section - Compact */}
-      <section className="bg-[#FDF8F3] py-6 md:py-8">
+      {/* Hero Section */}
+      <section className="bg-[#FDF8F3] pt-6 md:pt-8">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center gap-6 max-w-4xl mx-auto">
-            <div className="flex-1 text-center md:text-left">
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-[#5C4A3D] mb-3 leading-tight">
-                Handpicked. Homemade. Heartfelt.
-              </h1>
-              <p className="text-sm md:text-base text-[#636E72] font-serif italic">
-                In our Pacific Northwest backyard, the heritage trees provide. We turn what&apos;s given into something to share—and 100% of profits go to community causes.
-              </p>
-            </div>
-            <div className="flex-shrink-0">
-              <div className="relative w-40 h-40 md:w-48 md:h-48">
-                <div className="w-full h-full bg-[#F5EDE4] rounded-xl overflow-hidden">
-                  <Image 
-                    src="https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?w=300&h=300&fit=crop&q=80" 
-                    alt="Heritage apple trees"
-                    width={300}
-                    height={300}
-                    className="w-full h-full object-cover"
-                    priority
-                    unoptimized
-                  />
-                </div>
-              </div>
+          {/* Text Content */}
+          <div className="max-w-3xl mx-auto text-center mb-6">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-[#5C4A3D] mb-3 leading-tight">
+              Handpicked. Homemade. Heartfelt.
+            </h1>
+            <p className="text-sm md:text-base text-[#636E72] font-serif italic">
+              In our Pacific Northwest backyard, the heritage trees provide. We turn what&apos;s given into something to share—and 100% of profits go to community causes.
+            </p>
+          </div>
+          
+          {/* Wide Panoramic Image - Apple Trees & Garden */}
+          <div className="max-w-4xl mx-auto">
+            <div className="relative w-full aspect-[3/1] rounded-2xl overflow-hidden shadow-lg">
+              <Image 
+                src="/images/hero_garden.png"
+                alt="Heritage apple trees in our backyard garden"
+                fill
+                className="object-cover"
+                priority
+              />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Products - Right after hero */}
-      <section className="bg-[#FDF8F3] pb-6">
+      {/* Category Cards - Right after hero */}
+      <section className="bg-[#FDF8F3] pb-8">
         <div className="container mx-auto px-4">
-          <ProductPreview />
+          <div className="text-center mb-6">
+            <h2 className="text-xl md:text-2xl font-serif font-bold text-[#5C4A3D] mb-2">
+              Browse Our Harvest
+            </h2>
+            <p className="text-sm text-[#636E72]">
+              Tap a category to explore
+            </p>
+          </div>
+          <CategoryCards />
         </div>
       </section>
 

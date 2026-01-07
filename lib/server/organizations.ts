@@ -113,3 +113,4 @@ export const CATEGORY_LABELS: Record<Organization['category'], string> = {
   community: 'Community Support',
 };
 
+

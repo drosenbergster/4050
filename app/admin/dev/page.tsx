@@ -8,15 +8,17 @@
 
 import { useEffect, useState } from 'react';
 import { formatPrice } from '@/lib/format';
-import { ShoppingBag, BookOpen, Leaf, CheckCircle, Clock, Truck, Home, Filter, Sprout } from 'lucide-react';
+import { ShoppingBag, BookOpen, Leaf, CheckCircle, Clock, Truck, Home, Filter, Sprout, Store } from 'lucide-react';
 import Cookbook from '../components/cookbook';
+import CatalogManager from '../components/catalog-manager';
 import GardenPlanner from '../components/garden-planner';
 import { CURRENT_CAUSES } from '@/lib/causes';
 import OrderDetailModal from '../components/order-detail-modal';
 import { FulfillmentStatus, OrderWithItems } from '@/lib/types';
 
 export default function DevAdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'orders' | 'cogs' | 'planner'>('cogs');
+  const [activeTab, setActiveTab] = useState<'orders' | 'shop' | 'cogs' | 'planner'>('shop');
+  const [expandRecipeId, setExpandRecipeId] = useState<string | null>(null);
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
@@ -45,6 +47,19 @@ export default function DevAdminDashboard() {
       fetchOrders();
     }
   }, [activeTab]);
+
+  // Listen for "View recipe" navigation from Shop
+  useEffect(() => {
+    const handleNavigateToRecipe = (e: CustomEvent<{ recipeId: string }>) => {
+      setExpandRecipeId(e.detail.recipeId);
+      setActiveTab('cogs'); // Switch to Kitchen tab
+    };
+
+    window.addEventListener('navigate-to-recipe', handleNavigateToRecipe as EventListener);
+    return () => {
+      window.removeEventListener('navigate-to-recipe', handleNavigateToRecipe as EventListener);
+    };
+  }, []);
 
   const fetchOrders = async () => {
     setIsLoadingOrders(true);
@@ -132,6 +147,16 @@ export default function DevAdminDashboard() {
               )}
             </button>
             <button
+              onClick={() => setActiveTab('shop')}
+              className={`${activeTab === 'shop'
+                  ? 'border-[#2C3E50] text-[#2C3E50]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            >
+              <Store size={18} />
+              Shop
+            </button>
+            <button
               onClick={() => setActiveTab('cogs')}
               className={`${activeTab === 'cogs'
                   ? 'border-[#2C3E50] text-[#2C3E50]'
@@ -154,7 +179,9 @@ export default function DevAdminDashboard() {
           </nav>
         </div>
 
-        {activeTab === 'orders' ? (
+        {activeTab === 'shop' ? (
+          <CatalogManager />
+        ) : activeTab === 'orders' ? (
           <div className="space-y-6">
             {/* Today's Tasks */}
             {pendingCount > 0 && (
@@ -326,7 +353,10 @@ export default function DevAdminDashboard() {
             </details>
           </div>
         ) : activeTab === 'cogs' ? (
-          <Cookbook />
+          <Cookbook 
+            expandRecipeId={expandRecipeId}
+            onRecipeExpanded={() => setExpandRecipeId(null)}
+          />
         ) : (
           <GardenPlanner />
         )}

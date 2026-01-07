@@ -24,6 +24,10 @@ export interface ShopProduct {
   maxPrice: number;
 }
 
+interface ShopPageProps {
+  searchParams: Promise<{ category?: string }>;
+}
+
 async function getProducts(): Promise<ShopProduct[]> {
   try {
     // Fetch flavors with in-stock sizes from the new hierarchy
@@ -86,8 +90,10 @@ async function getProducts(): Promise<ShopProduct[]> {
   }
 }
 
-export default async function ShopPage() {
+export default async function ShopPage({ searchParams }: ShopPageProps) {
   const products = await getProducts();
+  const params = await searchParams;
+  const initialCategory = params.category || 'All';
 
   return (
     <main className="bg-[#FDF8F3] min-h-screen py-6 md:py-8">
@@ -101,7 +107,7 @@ export default async function ShopPage() {
             The two heritage apple trees in our Pacific Northwest backyard don&apos;t ask permission to be generous. Every season, they provide exactly what we need, and we make exactly what they provide.
           </p>
         </div>
-        <ProductGridWithFilters products={products} />
+        <ProductGridWithFilters products={products} initialCategory={initialCategory} />
       </div>
     </main>
   );

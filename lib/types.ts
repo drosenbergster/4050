@@ -32,6 +32,7 @@ export interface ProductFlavor {
   isAvailable: boolean;
   sortOrder: number;
   cogsRecipeId: string | null;
+  costUpdatedAt: Date | null; // When recipe costs were last updated
   createdAt: Date;
   updatedAt: Date;
   category?: ProductCategory;
@@ -50,6 +51,8 @@ export interface ProductSize {
   sizeLabel: string;     // "Small Jar (8 oz)", "Regular Jar (16 oz)"
   sizeOz: number;        // 8, 16, 32 - numeric for sorting
   unitPrice: number;     // Price in cents
+  labelCost: number;     // Label cost in cents (default 15 = $0.15)
+  containerCost: number; // Container cost in cents (varies by size)
   quantity: number;      // Current stock count
   isActive: boolean;
   sortOrder: number;

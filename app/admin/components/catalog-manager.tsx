@@ -11,8 +11,10 @@ import {
   Loader2,
   Check,
   X,
-  Trash2
+  Trash2,
+  Eye
 } from 'lucide-react';
+import ProductDetailModal from './product-detail-modal';
 
 interface ProductSize {
   id: string;
@@ -23,6 +25,33 @@ interface ProductSize {
   unitPrice: number;
   quantity: number;
   isActive: boolean;
+  // Cost fields (from API)
+  ingredientCost?: number; // in cents
+  labelCost?: number; // in cents
+  containerCost?: number; // in cents
+  cogs?: number; // in cents
+  suggestedPrice?: number; // in cents
+  margin?: number; // percentage
+}
+
+interface RecipeIngredient {
+  id: string;
+  quantity: number;
+  ingredient: {
+    id: string;
+    name: string;
+    unit: string;
+    source: string;
+  };
+}
+
+interface CogsRecipe {
+  id: string;
+  name: string;
+  description: string | null;
+  batchYield: number | null;
+  batchYieldUnit: string | null;
+  ingredients: RecipeIngredient[];
 }
 
 interface ProductFlavor {
@@ -39,6 +68,11 @@ interface ProductFlavor {
   hasStock: boolean;
   sizes: ProductSize[];
   category?: ProductCategory;
+  // Cost tracking
+  costPerOz?: number; // in cents
+  costUpdatedAt?: string | null;
+  cogsRecipeId?: string | null;
+  cogsRecipe?: CogsRecipe | null;
 }
 
 interface ProductCategory {
@@ -51,6 +85,15 @@ interface ProductCategory {
 
 interface CatalogData {
   categories: ProductCategory[];
+}
+
+// Check if cost was updated within last 7 days
+function isRecentCostUpdate(costUpdatedAt: string | null): boolean {
+  if (!costUpdatedAt) return false;
+  const updateDate = new Date(costUpdatedAt);
+  const now = new Date();
+  const daysSinceUpdate = (now.getTime() - updateDate.getTime()) / (1000 * 60 * 60 * 24);
+  return daysSinceUpdate <= 7;
 }
 
 export default function CatalogManager() {
@@ -75,6 +118,7 @@ export default function CatalogManager() {
   // Modal states
   const [showAddSize, setShowAddSize] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [viewingFlavor, setViewingFlavor] = useState<ProductFlavor | null>(null);
 
   const fetchCatalog = async () => {
     try {
@@ -363,6 +407,16 @@ export default function CatalogManager() {
                                   </button>
                                 )}
                                 
+                                {/* Cost Updated Badge */}
+                                {flavor.costUpdatedAt && isRecentCostUpdate(flavor.costUpdatedAt) && (
+                                  <span 
+                                    className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full flex items-center gap-1"
+                                    title={`Costs updated ${new Date(flavor.costUpdatedAt).toLocaleDateString()}`}
+                                  >
+                                    💰 Costs updated
+                                  </span>
+                                )}
+
                                 {/* Price Range */}
                                 <span className="text-sm text-[#8B7355]">
                                   {flavor.minPrice === flavor.maxPrice
@@ -425,6 +479,16 @@ export default function CatalogManager() {
 
                             {/* Flavor Actions */}
                             <div className="flex items-center gap-3">
+                              {/* Product Details Button */}
+                              <button
+                                onClick={() => setViewingFlavor(flavor)}
+                                className="flex items-center gap-1 text-xs text-gray-400 hover:text-[#4A7C59] transition-colors"
+                                title="View product details"
+                              >
+                                <Eye size={12} />
+                                <span>Product</span>
+                              </button>
+
                               {/* Visibility Toggle */}
                               <button
                                 onClick={() => toggleFlavorAvailability(flavor)}
@@ -459,8 +523,10 @@ export default function CatalogManager() {
                               <thead>
                                 <tr className="text-[#8B7355] text-xs uppercase tracking-wider">
                                   <th className="text-left py-2 px-3 font-medium">Size</th>
-                                  <th className="text-right py-2 px-3 font-medium w-28">Price</th>
-                                  <th className="text-right py-2 px-3 font-medium w-32">Stock</th>
+                                  <th className="text-right py-2 px-3 font-medium w-20">COGS</th>
+                                  <th className="text-right py-2 px-3 font-medium w-24">Price</th>
+                                  <th className="text-right py-2 px-3 font-medium w-16">Margin</th>
+                                  <th className="text-right py-2 px-3 font-medium w-24">Stock</th>
                                   <th className="w-10"></th>
                                 </tr>
                               </thead>
@@ -475,14 +541,42 @@ export default function CatalogManager() {
                                       </div>
                                     </td>
 
-                                    {/* Price - Read Only (from Kitchen) */}
+                                    {/* COGS - Cost breakdown on hover */}
                                     <td className="py-2.5 px-3 text-right">
                                       <span 
-                                        className="font-medium text-[#8B7355] tabular-nums cursor-help"
-                                        title="Price is set in Kitchen"
+                                        className="text-xs text-gray-500 tabular-nums cursor-help"
+                                        title={size.cogs ? `Ingredients: ${formatPrice(size.ingredientCost || 0)}\nContainer: ${formatPrice(size.containerCost || 0)}\nLabel: ${formatPrice(size.labelCost || 0)}` : 'No recipe linked'}
                                       >
-                                        {formatPrice(size.unitPrice)}
+                                        {size.cogs ? formatPrice(size.cogs) : '—'}
                                       </span>
+                                    </td>
+
+                                    {/* Price - with suggested comparison */}
+                                    <td className="py-2.5 px-3 text-right">
+                                      <div className="flex flex-col items-end">
+                                        <span className="font-medium text-[#5C4A3D] tabular-nums">
+                                          {formatPrice(size.unitPrice)}
+                                        </span>
+                                        {size.suggestedPrice && size.unitPrice !== size.suggestedPrice && (
+                                          <span className="text-[10px] text-gray-400">
+                                            suggested: {formatPrice(size.suggestedPrice)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+
+                                    {/* Margin */}
+                                    <td className="py-2.5 px-3 text-right">
+                                      {size.margin !== undefined ? (
+                                        <span className={`text-xs font-medium tabular-nums ${
+                                          size.margin >= 40 ? 'text-green-600' : 
+                                          size.margin >= 20 ? 'text-amber-600' : 'text-red-600'
+                                        }`}>
+                                          {size.margin}%
+                                        </span>
+                                      ) : (
+                                        <span className="text-xs text-gray-400">—</span>
+                                      )}
                                     </td>
 
                                     {/* Stock - Editable */}
@@ -581,6 +675,17 @@ export default function CatalogManager() {
           }}
         />
       )}
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        isOpen={viewingFlavor !== null}
+        onClose={() => setViewingFlavor(null)}
+        flavor={viewingFlavor}
+        onSave={() => {
+          fetchCatalog();
+          showSuccess('Product updated');
+        }}
+      />
     </div>
   );
 }

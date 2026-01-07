@@ -24,12 +24,12 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json();
-    const { recipeId, name, description, price, imageUrl, categoryId, isAvailable } = data;
+    const { recipeId, name, description, imageUrl, categoryId, isAvailable, firstSizeOz } = data;
 
     // Validate required fields
-    if (!recipeId || !name || !description || !imageUrl || !categoryId) {
+    if (!recipeId || !name || !description || !imageUrl || !categoryId || !firstSizeOz) {
       return NextResponse.json({ 
-        error: 'Missing required fields: recipeId, name, description, imageUrl, categoryId' 
+        error: 'Missing required fields: recipeId, name, description, imageUrl, categoryId, firstSizeOz' 
       }, { status: 400 });
     }
 
@@ -60,21 +60,62 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
 
-    // Convert price to cents (if provided in dollars)
-    const priceInCents = price 
-      ? Math.round(price * 100) 
-      : Math.round(recipe.retailPrice * 100);
+    // Container type based on size: 4oz → bag, others → jar
+    const sizeOz = parseInt(firstSizeOz, 10);
+    const containerLabel = sizeOz === 4 ? 'bag' : 'jar';
 
-    // Determine default size based on container type
-    const containerType = recipe.containerType?.toLowerCase() || 'jar';
-    const defaultSizeOz = containerType.includes('quart') ? 32 
-      : containerType.includes('pint') ? 16 
-      : containerType.includes('8oz') ? 8 
-      : containerType.includes('4oz') ? 4 
-      : containerType.includes('bag') ? 4 
-      : 8; // Default to 8oz
+    // Calculate price from recipe COGS
+    // First, get recipe ingredients to calculate batch cost
+    const recipeWithIngredients = await prisma.cogsRecipe.findUnique({
+      where: { id: recipeId },
+      include: {
+        ingredients: {
+          include: { ingredient: true }
+        }
+      }
+    });
 
-    const containerLabel = containerType.includes('bag') ? 'bag' : 'jar';
+    // Calculate batch ingredient cost (garden items are free)
+    const batchIngredientCost = recipeWithIngredients?.ingredients.reduce((sum, ri) => {
+      const cost = ri.ingredient.source === 'GARDEN' ? 0 : ri.ingredient.unitCost * ri.quantity;
+      return sum + cost;
+    }, 0) || 0;
+
+    // Yield unit conversions (to oz)
+    const yieldToOzConversions: Record<string, number> = {
+      oz: 1,
+      cup: 8,
+      cups: 8,
+      pint: 16,
+      pints: 16,
+      quart: 32,
+      quarts: 32,
+      gallon: 128,
+      gallons: 128,
+      lb: 16,
+      lbs: 16,
+      jar: 8, // Default jar = 8oz
+      jars: 8,
+    };
+
+    // Get batch yield in oz (assume recipe stores yield as number + containerType as unit)
+    const batchYieldValue = recipe.batchYield || 1;
+    const yieldUnit = recipe.containerType?.toLowerCase().replace(/\d+oz\s*/i, '').trim() || 'jar';
+    const ozPerUnit = yieldToOzConversions[yieldUnit] || 8;
+    const batchYieldInOz = batchYieldValue * ozPerUnit;
+
+    // Calculate cost per oz
+    const costPerOz = batchYieldInOz > 0 ? batchIngredientCost / batchYieldInOz : 0;
+
+    // Default costs for first size
+    const defaultLabelCost = 15; // $0.15 in cents
+    const defaultContainerCost = sizeOz === 4 ? 30 : sizeOz === 8 ? 100 : sizeOz === 16 ? 125 : 130; // in cents
+    const ingredientCostForSize = costPerOz * sizeOz;
+    const cogs = ingredientCostForSize + (defaultContainerCost / 100) + (defaultLabelCost / 100);
+
+    // Suggested price with 40% margin: COGS / (1 - 0.4) = COGS / 0.6
+    const suggestedPrice = cogs / 0.6;
+    const priceInCents = Math.round(suggestedPrice * 100);
 
     // Create the flavor linked to the recipe and update recipe status to PUBLISHED
     const flavor = await prisma.$transaction(async (tx) => {
@@ -90,17 +131,18 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Create default size
+      // Create first size with auto-calculated price
+      // Note: labelCost and containerCost fields will be added to schema in Task 5
       await tx.productSize.create({
         data: {
           flavorId: newFlavor.id,
-          sizeKey: `${defaultSizeOz}oz`,
-          sizeLabel: `${defaultSizeOz} oz ${containerLabel}`,
-          sizeOz: defaultSizeOz,
+          sizeKey: `${sizeOz}oz`,
+          sizeLabel: `${sizeOz} oz ${containerLabel}`,
+          sizeOz: sizeOz,
           unitPrice: priceInCents,
           quantity: 0, // Start with 0 inventory
           isActive: true,
-          sortOrder: defaultSizeOz,
+          sortOrder: sizeOz,
         },
       });
 

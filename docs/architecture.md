@@ -1,7 +1,7 @@
 # 4050 Simplified Architecture Document
 
-**Version:** 2.5 (Product Hierarchy & Catalog Management)  
-**Date:** January 4, 2026  
+**Version:** 2.6 (Kitchen-Shop Separation)  
+**Date:** January 6, 2026  
 **Status:** In Development  
 **Project:** 4050 Homemade Kindness
 
@@ -15,6 +15,7 @@ This document outlines the simplified fullstack architecture for 4050, focused o
 
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
+| 2026-01-06 | 2.6 | Kitchen-Shop Separation: Kitchen food-focused (no costs), Shop handles pricing/COGS, auto price calculation | Winston (Architect) |
 | 2026-01-04 | 2.5 | Product Hierarchy (Category→Flavor→Size→Batch), Catalog Management, Kitchen integration | Winston (Architect) |
 | 2025-12-27 | 2.4 | Added Recipe Costing feature with Ingredient Library | Winston (Architect) |
 | 2025-12-19 | 2.3 | Added Admin Order API routes and Search logic | James (Dev) |
@@ -67,12 +68,16 @@ Top-level product groupings.
 #### ProductFlavor
 Specific product variants within a category. **This is the primary "product" entity.**
 - id, categoryId, name, description, imageUrl, isAvailable, sortOrder
-- cogsRecipeId: Links to Kitchen recipe for cost/price management
+- **cogsRecipeId**: Links to Kitchen recipe for cost/price management
+- **costUpdatedAt**: Timestamp when recipe costs were last updated (triggers "💰 Costs updated" badge in Shop)
 - Examples: "Caramel Thyme Apple Butter", "Classic Applesauce", "Raspberry Jam"
 
 #### ProductSize
 Size/packaging options for each flavor. **Inventory is tracked at this level.**
 - id, flavorId, sizeKey, sizeLabel, sizeOz, unitPrice, quantity, isActive, sortOrder
+- **labelCost**: Label cost in cents (default $0.15)
+- **containerCost**: Container cost in cents (varies by size: bag $0.30, jars $1.00-$1.30)
+- COGS calculated: (recipe costPerOz × sizeOz) + labelCost + containerCost
 - Examples: "8 oz jar" ($5.99), "16 oz jar" ($9.99)
 
 #### ProductBatch
@@ -202,8 +207,8 @@ Production batch tracking for inventory management.
 - `/admin/login` - Admin login (Google OAuth)
 - `/admin` - Dashboard with tabs:
   - **Orders** - Order fulfillment with packing slips & address labels
-  - **Shop** - Product catalog management (CatalogManager)
-  - **Kitchen** - Recipe costing with publish workflow
+  - **Shop** - Business-focused product management (pricing, COGS, inventory)
+  - **Kitchen** - Food-focused recipe creation (no costs, just ingredients)
   - **Garden Planner** - Seasonal timeline and layout sandbox
   - **Organizations** - Seeds of Kindness beneficiary management
 - `/admin/dev` - Development testing (localhost only, no auth required)
@@ -215,23 +220,37 @@ Production batch tracking for inventory management.
 
 ### Publishing a Product (Kitchen → Shop)
 
+**Kitchen** is food-focused (no cost displays). **Shop** handles all business concerns.
+
 1. **Create Recipe** in Kitchen (💡 Dreaming Up)
    - Add ingredients with quantities
-   - Set container type, costs, retail price
+   - Set batch yield and container type
+   - No cost information shown - Kitchen is food-focused
    
 2. **Mark Ready** (✨ Almost There)
    - Recipe reviewed and ready for store
    
-3. **Publish to Store** 
+3. **Publish to Store** ("Put on Shelf")
    - Click "Put on Shelf" → Opens publish modal
    - Select/create category, add description, image
-   - Creates ProductFlavor linked to recipe
+   - **Select first size** (4oz, 8oz, 16oz, or 32oz)
+   - Container type auto-populated (4oz → bag, others → jar)
+   - **Price auto-calculated** from COGS with 40% target margin
+   - Creates ProductFlavor + first ProductSize, sets recipe status to PUBLISHED
    
-4. **Add Sizes** in Shop tab
-   - Add size options (8oz, 16oz, etc.) with prices
-   - Prices come from Kitchen but can add size-specific pricing
+4. **Manage in Shop tab**
+   - View COGS breakdown (ingredients + container + label)
+   - See margin % and suggested price per size
+   - Add additional size options with auto-calculated prices
+   - "View recipe →" link to navigate back to Kitchen
+   - "💰 Costs updated" badge when recipe changes affect prices
 
-5. **Manage Inventory**
+5. **Recipe Edit Impact**
+   - Editing a published recipe shows warning modal
+   - Confirms cost recalculation before saving
+   - Shop prices auto-update when recipe costs change
+
+6. **Manage Inventory**
    - Track stock at size level
    - Add/subtract inventory inline
 

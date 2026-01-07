@@ -29,3 +29,4 @@ COMMENT ON TABLE product_variants IS 'Size-based inventory tracking for products
 COMMENT ON COLUMN product_variants.size_key IS 'Stable identifier for cart/checkout (e.g., small-8oz)';
 COMMENT ON COLUMN product_variants.size_oz IS 'Numeric size in ounces for sorting and filtering';
 
+

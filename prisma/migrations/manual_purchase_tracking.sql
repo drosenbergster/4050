@@ -58,3 +58,4 @@ WHERE LOWER("name") IN (
 ) AND "purchaseSize" IS NULL;
 
 
+

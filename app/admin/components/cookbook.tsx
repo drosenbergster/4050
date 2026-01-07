@@ -11,18 +11,13 @@ import {
   Edit3, 
   ChevronDown,
   ChevronUp,
-  Leaf,
   Package,
   X,
   Save,
   ShoppingBag,
   ImagePlus,
   ArrowRight,
-  Search,
-  ExternalLink,
-  Tag,
-  PackageCheck,
-  PackageX
+  Search
 } from 'lucide-react';
 
 // Types
@@ -96,66 +91,19 @@ interface Recipe {
   } | null;
 }
 
-type CookbookTab = 'ideas' | 'ready' | 'published';
-
-// Calculate costs for a recipe (supports batch mode with yield)
-interface RecipeCosts {
-  batchIngredientsCost: number;       // Total cost of all ingredients for the batch
-  perJarIngredientsCost: number | null; // Per-jar ingredient cost (null if no yield)
-  totalCost: number | null;           // Per-jar total cost (null if no yield)
-  profit: number | null;              // Per-jar profit (null if no yield)
-  margin: number | null;              // Margin percentage (null if no yield)
-  hasYield: boolean;                  // Whether yield is set
-  yield: number | null;               // The yield value
-}
-
-function calculateRecipeCosts(recipe: Recipe): RecipeCosts {
-  // Calculate total batch ingredient cost (garden items are free!)
-  const batchIngredientsCost = recipe.ingredients.reduce((sum, ri) => {
-    const cost = ri.ingredient.source === 'GARDEN' ? 0 : ri.ingredient.unitCost * ri.quantity;
-    return sum + cost;
-  }, 0);
-
-  // If we have yield, calculate per-jar costs
-  if (recipe.batchYield && recipe.batchYield > 0) {
-    const perJarIngredientsCost = batchIngredientsCost / recipe.batchYield;
-    const totalCost = perJarIngredientsCost + recipe.containerCost + recipe.labelCost + recipe.energyCost;
-    const profit = recipe.retailPrice - totalCost;
-    const margin = recipe.retailPrice > 0 ? (profit / recipe.retailPrice) * 100 : 0;
-
-    return {
-      batchIngredientsCost,
-      perJarIngredientsCost,
-      totalCost,
-      profit,
-      margin,
-      hasYield: true,
-      yield: recipe.batchYield,
-    };
-  }
-
-  // No yield — batch mode, can't calculate per-jar costs
-  // For backward compatibility with old per-jar recipes (batchYield = null),
-  // treat quantities as per-jar amounts
-  return {
-    batchIngredientsCost,
-    perJarIngredientsCost: batchIngredientsCost, // In per-jar mode, batch = per-jar
-    totalCost: batchIngredientsCost + recipe.containerCost + recipe.labelCost + recipe.energyCost,
-    profit: recipe.retailPrice - (batchIngredientsCost + recipe.containerCost + recipe.labelCost + recipe.energyCost),
-    margin: recipe.retailPrice > 0 
-      ? ((recipe.retailPrice - (batchIngredientsCost + recipe.containerCost + recipe.labelCost + recipe.energyCost)) / recipe.retailPrice) * 100 
-      : 0,
-    hasYield: false,
-    yield: null,
-  };
-}
+type CookbookTab = 'ideas' | 'ready';
 
 // Format currency
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 }
 
-export default function Cookbook() {
+interface CookbookProps {
+  expandRecipeId?: string | null;
+  onRecipeExpanded?: () => void;
+}
+
+export default function Cookbook({ expandRecipeId, onRecipeExpanded }: CookbookProps) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -163,7 +111,6 @@ export default function Cookbook() {
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [batchSizes, setBatchSizes] = useState<Record<string, number>>({});
   const [showIngredients, setShowIngredients] = useState(false);
   const [ingredientCategory, setIngredientCategory] = useState<'produce' | 'pantry' | 'spices' | 'other'>('produce');
   const [sortOrder, setSortOrder] = useState<'a-z' | 'z-a'>('a-z');
@@ -179,19 +126,32 @@ export default function Cookbook() {
   }>({ unitCost: 0, unit: '', purchaseSize: null, purchaseUnit: null, purchaseCost: null });
   const [isAddingIngredient, setIsAddingIngredient] = useState(false);
   const [publishingRecipe, setPublishingRecipe] = useState<Recipe | null>(null);
-  const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [showCosts, setShowCosts] = useState(false);
-  const [productEdits, setProductEdits] = useState<{
-    name: string;
-    description: string;
-    imageUrl: string;
-    category: string;
-  }>({ name: '', description: '', imageUrl: '', category: '' });
+  const [pendingRecipeSave, setPendingRecipeSave] = useState<{
+    recipe: Recipe;
+    data: unknown;
+    linkedFlavor: { name: string; sizeCount: number } | null;
+  } | null>(null);
 
   // Fetch data on mount
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Handle external recipe expansion request (from Shop "View recipe" link)
+  useEffect(() => {
+    if (expandRecipeId && recipes.length > 0) {
+      // Find the recipe and switch to its tab
+      const recipe = recipes.find(r => r.id === expandRecipeId);
+      if (recipe) {
+        const status = recipe.status || 'IDEA';
+        if (status === 'IDEA') setActiveTab('ideas');
+        else if (status === 'READY') setActiveTab('ready');
+        // Note: PUBLISHED recipes now only show in Shop, not Kitchen
+        setExpandedRecipe(expandRecipeId);
+        onRecipeExpanded?.();
+      }
+    }
+  }, [expandRecipeId, recipes, onRecipeExpanded]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -264,24 +224,23 @@ export default function Cookbook() {
     other: groupedIngredients.other?.length || 0,
   }), [groupedIngredients]);
 
-  // Count recipes by status
+  // Count recipes by status (only IDEA and READY shown in Kitchen)
   const recipeCounts = useMemo(() => {
-    const counts = { ideas: 0, ready: 0, published: 0 };
+    const counts = { ideas: 0, ready: 0 };
     recipes.forEach(r => {
       const status = r.status || 'IDEA';
       if (status === 'IDEA') counts.ideas++;
       else if (status === 'READY') counts.ready++;
-      else if (status === 'PUBLISHED') counts.published++;
+      // PUBLISHED recipes are managed in Shop, not Kitchen
     });
     return counts;
   }, [recipes]);
 
-  // Filter and sort recipes by active tab
+  // Filter and sort recipes by active tab (Kitchen only shows IDEA and READY)
   const filteredRecipes = useMemo(() => {
     const statusMap: Record<CookbookTab, RecipeStatus> = {
       ideas: 'IDEA',
-      ready: 'READY', 
-      published: 'PUBLISHED'
+      ready: 'READY'
     };
     const targetStatus = statusMap[activeTab];
     const query = searchQuery.toLowerCase().trim();
@@ -403,11 +362,10 @@ export default function Cookbook() {
     }
   };
 
-  // Tab configuration - friendly, inviting labels
+  // Tab configuration - friendly, inviting labels (Kitchen only, no selling)
   const tabs: { id: CookbookTab; label: string; count: number }[] = [
     { id: 'ideas', label: '💡 Dreaming Up', count: recipeCounts.ideas },
     { id: 'ready', label: '✨ Almost There', count: recipeCounts.ready },
-    { id: 'published', label: '🏪 Ready to Sell', count: recipeCounts.published },
   ];
 
   return (
@@ -423,25 +381,13 @@ export default function Cookbook() {
             Your recipes, from idea to shelf
           </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowCosts(!showCosts)}
-            className={`px-4 py-2 text-sm font-medium border rounded-lg transition-colors ${
-              showCosts 
-                ? 'bg-[#E8F0EA] text-[#4A7C59] border-[#4A7C59]' 
-                : 'bg-white text-gray-500 border-[#E5DDD3] hover:bg-[#FDF8F3]'
-            }`}
-          >
-            {showCosts ? 'Hide Costs' : 'Show Costs'}
-          </button>
-          <button
-            onClick={() => setIsCreating(true)}
-            className="px-4 py-2 text-sm font-medium text-white bg-[#4A7C59] rounded-lg hover:bg-[#3d6549] transition-colors flex items-center gap-2"
-          >
-            <Plus size={18} />
-            New Idea
-          </button>
-        </div>
+        <button
+          onClick={() => setIsCreating(true)}
+          className="px-4 py-2 text-sm font-medium text-white bg-[#4A7C59] rounded-lg hover:bg-[#3d6549] transition-colors flex items-center gap-2"
+        >
+          <Plus size={18} />
+          New Idea
+        </button>
       </div>
 
       {/* Tab Navigation */}
@@ -713,7 +659,7 @@ export default function Cookbook() {
                   Start a New Idea
                 </button>
               </>
-            ) : activeTab === 'ready' ? (
+            ) : (
               <>
                 <div className="text-5xl mb-4">🌱</div>
                 <p className="text-lg font-serif text-[#5C4A3D]">Good things take time</p>
@@ -721,21 +667,11 @@ export default function Cookbook() {
                   When your ideas are ready to become real recipes, they&apos;ll show up here for their final touches before hitting the shelf.
                 </p>
               </>
-            ) : (
-              <>
-                <div className="text-5xl mb-4">🏪</div>
-                <p className="text-lg font-serif text-[#5C4A3D]">Your shelf awaits!</p>
-                <p className="text-sm text-gray-500 mt-2 max-w-sm mx-auto">
-                  Once your recipes are ready to sell, they&apos;ll appear here. Each one a little jar of love from your kitchen.
-                </p>
-              </>
             )}
           </div>
         ) : (
           filteredRecipes.map(recipe => {
-            const costs = calculateRecipeCosts(recipe);
             const isExpanded = expandedRecipe === recipe.id;
-            const batchSize = batchSizes[recipe.id] || 1;
 
             return (
               <div
@@ -764,102 +700,38 @@ export default function Cookbook() {
                 {/* Expanded Details */}
                 {isExpanded && (
                   <div className="border-t border-[#E5DDD3] p-4 bg-[#FDF8F3]">
-                    <div className={`grid grid-cols-1 ${showCosts ? 'md:grid-cols-2' : ''} gap-6`}>
+                    <div className="space-y-4">
                       {/* Ingredients Breakdown */}
                       <div>
                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
                           Ingredients
                         </h4>
                         <ul className="space-y-2">
-                          {recipe.ingredients.map(ri => {
-                            const cost = ri.ingredient.source === 'GARDEN' ? 0 : ri.ingredient.unitCost * ri.quantity;
-                            return (
-                              <li key={ri.id} className="flex items-center justify-between text-sm">
-                                <span className="flex items-center gap-2">
-                                  {ri.ingredient.source === 'GARDEN' && <span>🌱</span>}
-                                  {ri.ingredient.source === 'PACKAGING' && <span>📦</span>}
-                                  {ri.quantity} {ri.ingredient.unit} {ri.ingredient.name}
-                                </span>
-                                {showCosts && (
-                                  <span className={ri.ingredient.source === 'GARDEN' ? 'text-green-600' : 'text-gray-600'}>
-                                    {ri.ingredient.source === 'GARDEN' ? '🌱' : formatCurrency(cost)}
-                                  </span>
-                                )}
-                              </li>
-                            );
-                          })}
-                          {showCosts && (
-                            <li className="flex items-center justify-between text-sm pt-2 border-t border-[#E5DDD3]">
-                              <span>Packaging & Overhead</span>
-                              <span className="text-gray-600">{formatCurrency(recipe.containerCost + recipe.labelCost + recipe.energyCost)}</span>
+                          {recipe.ingredients.map(ri => (
+                            <li key={ri.id} className="flex items-center text-sm">
+                              <span className="flex items-center gap-2">
+                                {ri.ingredient.source === 'GARDEN' && <span>🌱</span>}
+                                {ri.ingredient.source === 'PACKAGING' && <span>📦</span>}
+                                {ri.quantity} {ri.ingredient.unit} {ri.ingredient.name}
+                              </span>
                             </li>
-                          )}
+                          ))}
                         </ul>
-                        
-                        {/* Notes moved here if costs are hidden */}
-                        {!showCosts && recipe.notes && (
-                          <div className="mt-4 pt-4 border-t border-[#E5DDD3]">
-                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Notes</h4>
-                            <p className="text-sm text-gray-600 italic">{recipe.notes}</p>
-                          </div>
-                        )}
                       </div>
+                      
+                      {/* Batch Yield Info */}
+                      {recipe.batchYield && (
+                        <div className="text-sm text-gray-600">
+                          <span className="font-medium">Batch yield:</span> {recipe.batchYield} {recipe.containerType || 'units'}
+                        </div>
+                      )}
 
-                      {/* Profit Calculator - Only show if costs enabled */}
-                      {showCosts && (
-                        <div>
-                          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                            Recipe Costs
-                          </h4>
-                          {costs.hasYield && costs.totalCost !== null && costs.profit !== null ? (
-                            <div className="bg-white rounded-lg p-4 border border-[#E5DDD3]">
-                            <div className="flex items-center gap-3 mb-4">
-                              <label className="text-sm text-gray-600">How many jars?</label>
-                              <input
-                                type="number"
-                                min="1"
-                                value={batchSize}
-                                onChange={(e) => setBatchSizes({ ...batchSizes, [recipe.id]: parseInt(e.target.value) || 1 })}
-                                className="w-20 px-3 py-1 border border-[#E5DDD3] rounded-lg text-center font-bold"
-                              />
-                            </div>
-                            
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Total Cost:</span>
-                                <span className="font-bold">{formatCurrency(costs.totalCost * batchSize)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Revenue @ {formatCurrency(recipe.retailPrice)}:</span>
-                                <span className="font-bold">{formatCurrency(recipe.retailPrice * batchSize)}</span>
-                              </div>
-                              <div className="flex justify-between pt-2 border-t border-[#E5DDD3]">
-                                <span className="text-gray-600 flex items-center gap-1">
-                                  <Leaf size={14} className="text-green-500" />
-                                  Profit for Donation:
-                                </span>
-                                <span className="font-bold text-green-600 text-lg">
-                                  {formatCurrency(costs.profit * batchSize)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700">
-                            <p className="flex items-center gap-2">
-                              <span>⚠️</span>
-                              <span>Set batch yield to calculate per-jar costs and profits</span>
-                            </p>
-                            <p className="mt-2 text-xs text-amber-600">
-                              Batch ingredients total: <span className="font-bold">{formatCurrency(costs.batchIngredientsCost)}</span>
-                            </p>
-                          </div>
-                        )}
-                        
-                        {recipe.notes && (
-                          <p className="text-xs text-gray-500 mt-3 italic">{recipe.notes}</p>
-                        )}
-                      </div>
+                      {/* Notes */}
+                      {recipe.notes && (
+                        <div className="pt-4 border-t border-[#E5DDD3]">
+                          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Notes</h4>
+                          <p className="text-sm text-gray-600 italic">{recipe.notes}</p>
+                        </div>
                       )}
                     </div>
 
@@ -920,311 +792,6 @@ export default function Cookbook() {
                           </div>
                         </>
                       )}
-                      
-                      {activeTab === 'published' && (recipe.flavor || recipe.product) && (
-                        <div className="space-y-4">
-                          {/* Product Controls Row */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              {/* In Stock Toggle - uses flavor API if available, falls back to product */}
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    if (recipe.flavor) {
-                                      await fetch(`/api/catalog/flavors/${recipe.flavor.id}`, {
-                                        method: 'PUT',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ isAvailable: !recipe.flavor.isAvailable })
-                                      });
-                                    } else if (recipe.product) {
-                                      await fetch(`/api/products/${recipe.product.id}`, {
-                                        method: 'PUT',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ isAvailable: !recipe.product.isAvailable })
-                                      });
-                                    }
-                                    await fetchData();
-                                  } catch (e) {
-                                    console.error('Failed to toggle availability:', e);
-                                  }
-                                }}
-                                className={`px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 font-medium ${
-                                  (recipe.flavor?.isAvailable ?? recipe.product?.isAvailable)
-                                    ? 'text-green-700 bg-green-50 hover:bg-green-100 border border-green-200' 
-                                    : 'text-gray-500 bg-gray-100 hover:bg-gray-200 border border-gray-200'
-                                }`}
-                              >
-                                {(recipe.flavor?.isAvailable ?? recipe.product?.isAvailable) ? <PackageCheck size={16} /> : <PackageX size={16} />}
-                                {(recipe.flavor?.isAvailable ?? recipe.product?.isAvailable) ? 'In Stock' : 'Out of Stock'}
-                              </button>
-                              <a
-                                href={recipe.flavor ? `/product/${recipe.flavor.id}` : "/shop"}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-3 py-2 text-sm text-[#5C4A3D] hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1"
-                              >
-                                <ExternalLink size={14} />
-                                View in Shop
-                              </a>
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setEditingRecipe(recipe)}
-                                className="px-3 py-1.5 text-sm text-[#5C4A3D] hover:bg-white rounded-lg transition-colors flex items-center gap-1"
-                              >
-                                <Edit3 size={14} />
-                                Edit Recipe
-                              </button>
-                              <button
-                                onClick={() => handleMoveRecipe(recipe.id, 'READY')}
-                                className="px-3 py-1.5 text-sm text-amber-600 hover:bg-amber-50 rounded-lg transition-colors flex items-center gap-1"
-                              >
-                                Remove from Shelf
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {/* Product Details Section - prioritizes flavor over legacy product */}
-                          <div className="border-t border-[#E5DDD3] pt-4">
-                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                              <ShoppingBag size={14} />
-                              Shop Product {recipe.flavor && <span className="text-[#4A7C59] font-normal normal-case">(synced)</span>}
-                            </h4>
-                            
-                            {editingProductId === (recipe.flavor?.id || recipe.product?.id) ? (
-                              /* Edit Mode */
-                              <div className="space-y-4 bg-white rounded-lg p-4 border border-[#E5DDD3]">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">Product Name</label>
-                                    <input
-                                      type="text"
-                                      value={productEdits.name}
-                                      onChange={(e) => setProductEdits({ ...productEdits, name: e.target.value })}
-                                      className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg text-sm"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
-                                    <select
-                                      value={productEdits.category}
-                                      onChange={(e) => setProductEdits({ ...productEdits, category: e.target.value })}
-                                      className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg text-sm bg-white"
-                                    >
-                                      <option value="">No category</option>
-                                      <option value="Applesauces">Applesauces</option>
-                                      <option value="Spreads">Spreads</option>
-                                      <option value="Dried Goods">Dried Goods</option>
-                                      <option value="Jams">Jams</option>
-                                      <option value="Pickled Goods">Pickled Goods</option>
-                                    </select>
-                                  </div>
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
-                                  <textarea
-                                    value={productEdits.description}
-                                    onChange={(e) => setProductEdits({ ...productEdits, description: e.target.value })}
-                                    rows={3}
-                                    className="w-full px-3 py-2 border border-[#E5DDD3] rounded-lg text-sm"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-600 mb-1">Product Photo</label>
-                                  <div
-                                    className="relative border-2 border-dashed border-[#E5DDD3] rounded-lg p-4 hover:border-[#4A7C59] transition-colors cursor-pointer"
-                                    onDragOver={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.classList.add('border-[#4A7C59]', 'bg-[#E8F0EA]');
-                                    }}
-                                    onDragLeave={(e) => {
-                                      e.currentTarget.classList.remove('border-[#4A7C59]', 'bg-[#E8F0EA]');
-                                    }}
-                                    onDrop={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.classList.remove('border-[#4A7C59]', 'bg-[#E8F0EA]');
-                                      const file = e.dataTransfer.files[0];
-                                      if (file && file.type.startsWith('image/')) {
-                                        const reader = new FileReader();
-                                        reader.onload = (event) => {
-                                          setProductEdits({ ...productEdits, imageUrl: event.target?.result as string });
-                                        };
-                                        reader.readAsDataURL(file);
-                                      }
-                                    }}
-                                    onClick={() => {
-                                      const input = document.createElement('input');
-                                      input.type = 'file';
-                                      input.accept = 'image/*';
-                                      input.onchange = (e) => {
-                                        const file = (e.target as HTMLInputElement).files?.[0];
-                                        if (file) {
-                                          const reader = new FileReader();
-                                          reader.onload = (event) => {
-                                            setProductEdits({ ...productEdits, imageUrl: event.target?.result as string });
-                                          };
-                                          reader.readAsDataURL(file);
-                                        }
-                                      };
-                                      input.click();
-                                    }}
-                                  >
-                                    {productEdits.imageUrl ? (
-                                      <div className="flex items-center gap-3">
-                                        <img 
-                                          src={productEdits.imageUrl} 
-                                          alt="Preview" 
-                                          className="w-16 h-16 object-cover rounded-lg"
-                                        />
-                                        <div className="text-sm text-gray-500">
-                                          <p className="font-medium text-[#4A7C59]">Click or drop to replace</p>
-                                          <p className="text-xs">or paste a URL below</p>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="text-center text-sm text-gray-500 py-2">
-                                        <ImagePlus size={24} className="mx-auto mb-2 text-gray-400" />
-                                        <p className="font-medium">Drop image here or click to browse</p>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <input
-                                    type="text"
-                                    value={productEdits.imageUrl.startsWith('data:') ? '' : productEdits.imageUrl}
-                                    onChange={(e) => setProductEdits({ ...productEdits, imageUrl: e.target.value })}
-                                    className="w-full mt-2 px-3 py-2 border border-[#E5DDD3] rounded-lg text-sm"
-                                    placeholder="Or paste image URL here..."
-                                  />
-                                </div>
-                                <div className="flex justify-end gap-2">
-                                  <button
-                                    onClick={() => setEditingProductId(null)}
-                                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    onClick={async () => {
-                                      try {
-                                        // Use flavor API if available, otherwise fall back to product
-                                        if (recipe.flavor) {
-                                          await fetch(`/api/catalog/flavors/${recipe.flavor.id}`, {
-                                            method: 'PUT',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                              name: productEdits.name,
-                                              description: productEdits.description,
-                                              imageUrl: productEdits.imageUrl
-                                            })
-                                          });
-                                        } else if (recipe.product) {
-                                          await fetch(`/api/products/${recipe.product.id}`, {
-                                            method: 'PUT',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify(productEdits)
-                                          });
-                                        }
-                                        await fetchData();
-                                        setEditingProductId(null);
-                                      } catch (e) {
-                                        console.error('Failed to update product:', e);
-                                      }
-                                    }}
-                                    className="px-4 py-2 text-sm bg-[#4A7C59] text-white rounded-lg hover:bg-[#3d6549] flex items-center gap-2"
-                                  >
-                                    <Save size={14} />
-                                    Save Changes
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              /* View Mode - prioritize flavor over legacy product */
-                              <div className="bg-white rounded-lg p-4 border border-[#E5DDD3]">
-                                <div className="flex gap-4">
-                                  {/* Product Image - Clickable to edit */}
-                                  <div className="flex-shrink-0">
-                                    <button
-                                      onClick={() => {
-                                        const id = recipe.flavor?.id || recipe.product?.id;
-                                        const name = recipe.flavor?.name || recipe.product?.name || '';
-                                        const desc = recipe.flavor?.description || recipe.product?.description || '';
-                                        const img = recipe.flavor?.imageUrl || recipe.product?.imageUrl || '';
-                                        const cat = recipe.flavor?.category?.name || recipe.product?.category || '';
-                                        if (id) {
-                                          setEditingProductId(id);
-                                          setProductEdits({ name, description: desc, imageUrl: img, category: cat });
-                                        }
-                                      }}
-                                      className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 relative group cursor-pointer border-2 border-transparent hover:border-[#4A7C59] transition-all"
-                                      title="Click to change photo"
-                                    >
-                                      <img 
-                                        src={recipe.flavor?.imageUrl || recipe.product?.imageUrl || ''} 
-                                        alt={recipe.flavor?.name || recipe.product?.name || ''}
-                                        className="w-full h-full object-cover"
-                                      />
-                                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <ImagePlus size={20} className="text-white" />
-                                      </div>
-                                    </button>
-                                  </div>
-                                  
-                                  {/* Product Info */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between">
-                                      <div>
-                                        <h5 className="font-medium text-[#5C4A3D]">
-                                          {recipe.flavor?.name || recipe.product?.name}
-                                        </h5>
-                                        {(recipe.flavor?.category?.name || recipe.product?.category) && (
-                                          <span className="inline-flex items-center gap-1 text-xs text-gray-500 mt-1">
-                                            <Tag size={10} />
-                                            {recipe.flavor?.category?.name || recipe.product?.category}
-                                          </span>
-                                        )}
-                                        {/* Show size/inventory info for flavors */}
-                                        {recipe.flavor?.sizes && recipe.flavor.sizes.length > 0 && (
-                                          <div className="flex items-center gap-2 mt-2">
-                                            {recipe.flavor.sizes.map((size) => (
-                                              <span key={size.id} className={`text-xs px-2 py-0.5 rounded ${
-                                                size.quantity > 0 
-                                                  ? 'bg-green-50 text-green-700 border border-green-200' 
-                                                  : 'bg-gray-100 text-gray-500'
-                                              }`}>
-                                                {size.sizeLabel}: {size.quantity}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </div>
-                                      <button
-                                        onClick={() => {
-                                          const id = recipe.flavor?.id || recipe.product?.id;
-                                          const name = recipe.flavor?.name || recipe.product?.name || '';
-                                          const desc = recipe.flavor?.description || recipe.product?.description || '';
-                                          const img = recipe.flavor?.imageUrl || recipe.product?.imageUrl || '';
-                                          const cat = recipe.flavor?.category?.name || recipe.product?.category || '';
-                                          if (id) {
-                                            setEditingProductId(id);
-                                            setProductEdits({ name, description: desc, imageUrl: img, category: cat });
-                                          }
-                                        }}
-                                        className="text-sm text-[#4A7C59] hover:text-[#3d6549] flex items-center gap-1"
-                                      >
-                                        <Edit3 size={12} />
-                                        Edit
-                                      </button>
-                                    </div>
-                                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                                      {recipe.flavor?.description || recipe.product?.description}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -1246,6 +813,20 @@ export default function Cookbook() {
           onSave={async (data) => {
             try {
               if (editingRecipe) {
+                // Check if this is a PUBLISHED recipe with linked products
+                if (editingRecipe.status === 'PUBLISHED' && editingRecipe.flavor) {
+                  // Show warning modal before saving
+                  setPendingRecipeSave({
+                    recipe: editingRecipe,
+                    data,
+                    linkedFlavor: {
+                      name: editingRecipe.flavor.name,
+                      sizeCount: editingRecipe.flavor.sizes?.length || 0
+                    }
+                  });
+                  return; // Don't save yet, wait for confirmation
+                }
+
                 const res = await fetch(`/api/admin/cogs/recipes/${editingRecipe.id}`, {
                   method: 'PATCH',
                   headers: { 'Content-Type': 'application/json' },
@@ -1279,6 +860,64 @@ export default function Cookbook() {
           onClose={() => setIsAddingIngredient(false)}
           onSave={handleAddIngredient}
         />
+      )}
+
+      {/* Recipe Edit Warning Modal - for published recipes */}
+      {pendingRecipeSave && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+                <span className="text-xl">⚠️</span>
+              </div>
+              <h3 className="font-serif font-bold text-lg text-[#5C4A3D]">Update Shop Costs?</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              This recipe is published to the Shop as <span className="font-medium">&quot;{pendingRecipeSave.linkedFlavor?.name}&quot;</span>
+              {pendingRecipeSave.linkedFlavor && pendingRecipeSave.linkedFlavor.sizeCount > 0 && (
+                <> with {pendingRecipeSave.linkedFlavor.sizeCount} size{pendingRecipeSave.linkedFlavor.sizeCount !== 1 ? 's' : ''}</>
+              )}.
+            </p>
+            <p className="text-sm text-gray-600 mb-6">
+              Saving these changes will update the cost calculations in the Shop. Prices may need to be reviewed.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setPendingRecipeSave(null);
+                  // Keep editor open so user can cancel
+                }}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  // Proceed with save
+                  try {
+                    const res = await fetch(`/api/admin/cogs/recipes/${pendingRecipeSave.recipe.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(pendingRecipeSave.data)
+                    });
+                    if (res.ok) {
+                      await fetchData();
+                    }
+                    setIsCreating(false);
+                    setEditingRecipe(null);
+                    setPendingRecipeSave(null);
+                  } catch (error) {
+                    console.error('Failed to save recipe:', error);
+                    setPendingRecipeSave(null);
+                  }
+                }}
+                className="px-6 py-2 bg-[#4A7C59] text-white rounded-lg hover:bg-[#3d6549] transition-colors font-medium"
+              >
+                Update & Recalculate
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Publish to Store Modal */}
@@ -1876,9 +1515,9 @@ interface PublishToStoreModalProps {
 function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModalProps) {
   const [name, setName] = useState(recipe.name);
   const [description, setDescription] = useState(recipe.description || `Handcrafted ${recipe.name} made with care.`);
-  const [price, setPrice] = useState(recipe.retailPrice);
   const [imageUrl, setImageUrl] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [firstSizeOz, setFirstSizeOz] = useState(8); // Default to 8oz
   const [isAvailable, setIsAvailable] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1887,6 +1526,9 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [creatingCategory, setCreatingCategory] = useState(false);
+
+  // Auto-populate container type based on size
+  const containerType = firstSizeOz === 4 ? 'bag' : 'jar';
 
   // Fetch categories from API
   const fetchCategories = async () => {
@@ -1926,21 +1568,21 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
       } else {
         throw new Error('Failed to create category');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to create category');
     } finally {
       setCreatingCategory(false);
     }
   };
 
-  const costs = calculateRecipeCosts(recipe);
-  const estimatedProfit = costs.totalCost !== null ? price - costs.totalCost : null;
-  const estimatedMargin = estimatedProfit !== null && price > 0 ? (estimatedProfit / price) * 100 : 0;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryId) {
       setError('Please select a category');
+      return;
+    }
+    if (!firstSizeOz) {
+      setError('Please select a size');
       return;
     }
     setIsSubmitting(true);
@@ -1954,9 +1596,9 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
           recipeId: recipe.id,
           name,
           description,
-          price, // Will be converted to cents by API
           imageUrl,
-          categoryId, // Use categoryId for new hierarchy
+          categoryId,
+          firstSizeOz, // Size determines container type and price calculation
           isAvailable,
         }),
       });
@@ -1994,31 +1636,6 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          {/* Cost Summary */}
-          <div className="bg-[#FDF8F3] rounded-xl p-4 space-y-2">
-            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Cost Analysis</h4>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Production Cost</span>
-              <span className="font-medium">
-                {costs.totalCost !== null ? formatCurrency(costs.totalCost) : 'Set yield'}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Retail Price</span>
-              <span className="font-bold text-[#4A7C59]">{formatCurrency(price)}</span>
-            </div>
-            <div className="flex justify-between text-sm border-t border-[#E5DDD3] pt-2">
-              <span className="text-gray-600">Estimated Profit</span>
-              {estimatedProfit !== null ? (
-                <span className={`font-bold ${estimatedProfit > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(estimatedProfit)} ({estimatedMargin.toFixed(0)}%)
-                </span>
-              ) : (
-                <span className="text-gray-400">Set yield to calculate</span>
-              )}
-            </div>
-          </div>
-
           {error && (
             <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
@@ -2051,23 +1668,29 @@ function PublishToStoreModal({ recipe, onClose, onPublish }: PublishToStoreModal
             />
           </div>
 
-          {/* Price */}
+          {/* First Size */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
-            <div className="relative">
-              <span className="absolute left-3 top-2.5 text-gray-400">$</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={price}
-                onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
-                required
-                className="w-full pl-7 pr-3 py-2 border border-[#E5DDD3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/20 focus:border-[#4A7C59]"
-              />
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              First Size <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
+              <select
+                value={firstSizeOz}
+                onChange={(e) => setFirstSizeOz(parseInt(e.target.value))}
+                className="flex-1 px-3 py-2 border border-[#E5DDD3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A7C59]/20 focus:border-[#4A7C59]"
+              >
+                <option value={4}>4 oz</option>
+                <option value={8}>8 oz</option>
+                <option value={16}>16 oz</option>
+                <option value={32}>32 oz</option>
+              </select>
+              <div className="px-4 py-2 bg-[#FDF8F3] border border-[#E5DDD3] rounded-lg text-sm text-gray-600 flex items-center gap-1">
+                <Package size={14} />
+                {containerType}
+              </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Suggested based on recipe retail price. Synced initially, can be adjusted independently later.
+              Price will be auto-calculated from recipe costs. You can add more sizes in the Shop.
             </p>
           </div>
 

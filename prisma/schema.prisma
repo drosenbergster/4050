@@ -41,21 +41,22 @@ model ProductCategory {
 
 // Flavor/variant of a base product (e.g., Caramel Thyme, Maple Cinnamon, Classic)
 model ProductFlavor {
-  id           String           @id @default(uuid())
-  categoryId   String
-  name         String           // "Caramel Thyme", "Classic", "Maple Cinnamon"
-  description  String?          // Specific description for this flavor
-  imageUrl     String?          // Override image for this flavor
-  isAvailable  Boolean          @default(true)  // Admin visibility toggle
-  sortOrder    Int              @default(0)
-  cogsRecipeId String?          @unique
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  category     ProductCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  cogsRecipe   CogsRecipe?      @relation(fields: [cogsRecipeId], references: [id])
-  sizes        ProductSize[]
-  batches      ProductBatch[]
-  orderItems   OrderItem[]
+  id            String           @id @default(uuid())
+  categoryId    String
+  name          String           // "Caramel Thyme", "Classic", "Maple Cinnamon"
+  description   String?          // Specific description for this flavor
+  imageUrl      String?          // Override image for this flavor
+  isAvailable   Boolean          @default(true)  // Admin visibility toggle
+  sortOrder     Int              @default(0)
+  cogsRecipeId  String?          @unique
+  costUpdatedAt DateTime?        // When recipe costs were last updated (for Shop alert)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  category      ProductCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  cogsRecipe    CogsRecipe?      @relation(fields: [cogsRecipeId], references: [id])
+  sizes         ProductSize[]
+  batches       ProductBatch[]
+  orderItems    OrderItem[]
 
   @@unique([categoryId, name])  // No duplicate flavors within a category
   @@index([categoryId])
@@ -65,19 +66,21 @@ model ProductFlavor {
 
 // Size options for a flavor (e.g., 8oz, 16oz, 32oz)
 model ProductSize {
-  id        String         @id @default(uuid())
-  flavorId  String
-  sizeKey   String         // "small-8oz", "regular-16oz", "quart-32oz"
-  sizeLabel String         // "Small Jar (8 oz)", "Regular Jar (16 oz)"
-  sizeOz    Int            // 8, 16, 32 - for sorting
-  unitPrice Int            // Price in cents
-  quantity  Int            @default(0)  // Current stock count
-  isActive  Boolean        @default(true)
-  sortOrder Int            @default(0)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  flavor    ProductFlavor  @relation(fields: [flavorId], references: [id], onDelete: Cascade)
-  batches   ProductBatch[]
+  id            String         @id @default(uuid())
+  flavorId      String
+  sizeKey       String         // "small-8oz", "regular-16oz", "quart-32oz"
+  sizeLabel     String         // "Small Jar (8 oz)", "Regular Jar (16 oz)"
+  sizeOz        Int            // 8, 16, 32 - for sorting
+  unitPrice     Int            // Retail price in cents
+  labelCost     Int            @default(15)  // Label cost in cents (default $0.15)
+  containerCost Int            @default(100) // Container cost in cents (default $1.00)
+  quantity      Int            @default(0)  // Current stock count
+  isActive      Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  flavor        ProductFlavor  @relation(fields: [flavorId], references: [id], onDelete: Cascade)
+  batches       ProductBatch[]
 
   @@unique([flavorId, sizeKey])  // One size option per flavor
   @@index([flavorId])

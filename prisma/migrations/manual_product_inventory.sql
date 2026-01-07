@@ -6,3 +6,4 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 
 -- Optional: Add index for filtering by stock status (performance)
 CREATE INDEX IF NOT EXISTS idx_products_quantity ON products(quantity);
 
+

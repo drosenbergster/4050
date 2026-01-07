@@ -39,3 +39,4 @@ WHERE "name" ILIKE '%jar%'
 -- Everything else stays as PANTRY (sugar, spices, vinegar, etc.)
 
 
+

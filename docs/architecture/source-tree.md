@@ -38,16 +38,18 @@ High-level map of the repository to help contributors find things quickly.
 - `app/admin/login/page.tsx`: Google OAuth login
 - `app/admin/orders/[id]/`: Order detail views (packing slip, address label)
 - `app/admin/components/`:
-  - `catalog-manager.tsx`: **Product Catalog UI** - Hierarchical view of categories/flavors/sizes with:
-    - Collapsible category sections
-    - Inline flavor name/description editing
+  - `catalog-manager.tsx`: **Shop/Product Catalog UI** - Business-focused product management:
+    - Hierarchical view of categories/flavors/sizes
+    - COGS breakdown (ingredients + container + label)
+    - Margin % and suggested price display
+    - "View recipe" link to Kitchen
+    - "💰 Costs updated" badge for recent recipe changes
     - Size management with inventory tracking
-    - Visibility toggles per flavor
-  - `cookbook.tsx`: **Kitchen UI** with 3-tab workflow:
-    - 💡 **Dreaming Up**: Recipe experiments (create, edit, cost)
-    - ✨ **Almost There**: Recipes ready for final review
-    - 🏪 **Ready to Sell**: Published recipes with store sync
-    - Publish modal with category selection/creation
+  - `cookbook.tsx`: **Kitchen UI** with 2-tab workflow (food-focused, no costs):
+    - 💡 **Dreaming Up**: Recipe experiments (create, edit ingredients)
+    - ✨ **Almost There**: Recipes ready to publish to Shop
+    - "Put on Shelf" modal with category, description, photo, first size
+    - Recipe edit warning when modifying published recipes
   - `garden-planner.tsx`: Garden Planner with:
     - **Growing Calendar**: Visual crop timeline with phases
     - **Potential Harvest**: Yield calculator ("What Could the Garden Give Us?")
